@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>mdv</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-theme="auto" data-view="preview" data-width="full">
+  <!-- Top Minimalist Chrome -->
+  <header id="toolbar" class="toolbar">
+    <div class="toolbar-section left">
+      <button id="btn-open" class="btn btn-ghost" title="Open File (Ctrl+O)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="btn-label">Open</span>
+      </button>
+      <span id="file-info" class="file-info" title="No file loaded">
+        <span id="doc-title" class="doc-title">Welcome</span>
+        <span id="file-badge" class="file-badge hidden">auto-reload</span>
+      </span>
+    </div>
+
+    <div class="toolbar-section center">
+      <!-- Segmented View Switcher: Preview vs Source -->
+      <div class="segmented-control" role="group" aria-label="View toggle">
+        <button id="view-preview-btn" class="segment-btn active" title="Show Rendered Preview (Ctrl+E or Tab)">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span>Preview</span>
+        </button>
+        <button id="view-source-btn" class="segment-btn" title="Show Raw Markdown Source (Ctrl+E or Tab)">
+          <svg class="icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+          <span>Source</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="toolbar-section right">
+      <!-- Width Mode Toggle: Full Width vs Centered Column -->
+      <button id="width-btn" class="btn btn-icon" title="Toggle Width (W): Full Window / Centered Column">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 12h16M4 12l4-4M4 12l4 4M20 12l-4-4M20 12l4 4"></path>
+        </svg>
+      </button>
+
+      <!-- Font Switcher: Default Proportional vs JetBrains Mono (Code) -->
+      <button id="font-btn" class="btn btn-icon" title="Toggle Font (F): Default Sans / JetBrains Mono">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 20 8 7 12 20"></polyline>
+          <line x1="5.5" y1="15" x2="10.5" y2="15"></line>
+          <path d="M15 13a3 3 0 1 0 5 2.5V8"></path>
+          <path d="M20 16a2 2 0 1 1-2-2h2"></path>
+        </svg>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button id="theme-btn" class="btn btn-icon" title="Toggle Theme (Ctrl+T): Auto / Light / Dark">
+        <svg id="theme-icon-sun" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg id="theme-icon-moon" class="icon hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+
+      <!-- Zen / Focus Mode -->
+      <button id="zen-btn" class="btn btn-icon" title="Focus / Zen Mode (F11 or Z)">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+      </button>
+
+      <!-- Help / Shortcuts -->
+      <button id="help-btn" class="btn btn-icon" title="Shortcuts & Info — mdv v0.1.0">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Viewport Area -->
+  <main id="viewport" class="viewport">
+    <!-- Rendered Markdown View -->
+    <div id="preview-container" class="content-view active-view">
+      <article id="markdown-body" class="markdown-body"></article>
+    </div>
+
+    <!-- Raw Source View -->
+    <div id="source-container" class="content-view">
+      <div id="source-code" class="source-wrapper"></div>
+    </div>
+  </main>
+
+  <!-- Floating Toast Notification -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Shortcuts Modal -->
+  <div id="modal-shortcuts" class="modal-backdrop hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3>Keyboard Shortcuts</h3>
+          <span class="version-chip" id="app-version-badge">v0.1.0</span>
+        </div>
+        <button id="btn-close-modal" class="btn btn-icon" title="Close (Esc)">&times;</button>
+      </div>
+      <div class="modal-body">
+        <table class="shortcuts-table">
+          <tr><td><kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd></td><td>Toggle Preview / Source</td></tr>
+          <tr><td><kbd>W</kbd></td><td>Toggle Full Width / Centered Column</td></tr>
+          <tr><td><kbd>F</kbd></td><td>Toggle Font (Default Sans / JetBrains Mono)</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>O</kbd></td><td>Open Markdown File</td></tr>
+          <tr><td><kbd>Alt</kbd> + <kbd>←</kbd> or <kbd>Backspace</kbd></td><td>Back in Document History</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>T</kbd></td><td>Cycle Theme (Auto / Light / Dark)</td></tr>
+          <tr><td><kbd>F11</kbd> or <kbd>Z</kbd></td><td>Toggle Zen / Focus Mode</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd></td><td>Zoom Font In / Out</td></tr>
+          <tr><td><kbd>Ctrl</kbd> + <kbd>0</kbd></td><td>Reset Font Zoom</td></tr>
+          <tr><td><kbd>?</kbd></td><td>Show this Shortcuts Help</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>Exit Zen Mode / Close Help</td></tr>
+        </table>
+      </div>
+      <div class="modal-footer">
+        <span>mdv — Minimalist Focus Reader</span>
+        <span class="modal-footer-version" id="app-version-text">v0.1.0</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vendor Scripts -->
+  <script src="vendor/marked.min.js"></script>
+  <script src="vendor/highlight.min.js"></script>
+  <!-- Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

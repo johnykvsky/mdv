@@ -10,6 +10,7 @@ PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 APP_DIR ?= $(PREFIX)/share/applications
 ICON_DIR ?= $(PREFIX)/share/icons/hicolor/128x128/apps
+HICOLOR_DIR ?= $(PREFIX)/share/icons/hicolor
 TARGET_DIR = target
 
 # Colors for terminal output
@@ -74,16 +75,32 @@ install: release
 
 # Setup desktop shortcut (.desktop), application icon, and file associations
 install-desktop:
-	@mkdir -p $(APP_DIR) $(ICON_DIR)
-	@install -m 644 icons/128x128.png $(ICON_DIR)/mdv.png
-	@printf "[Desktop Entry]\nType=Application\nName=mdv\nGenericName=Markdown Viewer\nComment=Minimalist Markdown Focus Reader\nExec=$(BIN_DIR)/mdv %%U\nIcon=mdv\nTerminal=false\nCategories=Utility;Viewer;Office;\nMimeType=text/markdown;text/x-markdown;\nStartupNotify=true\n" > $(APP_DIR)/mdv.desktop
+	@mkdir -p $(APP_DIR)
+	@mkdir -p $(HICOLOR_DIR)/scalable/apps
+	@mkdir -p $(HICOLOR_DIR)/16x16/apps
+	@mkdir -p $(HICOLOR_DIR)/32x32/apps
+	@mkdir -p $(HICOLOR_DIR)/48x48/apps
+	@mkdir -p $(HICOLOR_DIR)/64x64/apps
+	@mkdir -p $(HICOLOR_DIR)/128x128/apps
+	@mkdir -p $(HICOLOR_DIR)/256x256/apps
+	@mkdir -p $(HICOLOR_DIR)/512x512/apps
+	@install -m 644 icons/icon.svg $(HICOLOR_DIR)/scalable/apps/mdv.svg
+	@install -m 644 icons/16x16.png $(HICOLOR_DIR)/16x16/apps/mdv.png
+	@install -m 644 icons/32x32.png $(HICOLOR_DIR)/32x32/apps/mdv.png
+	@install -m 644 icons/48x48.png $(HICOLOR_DIR)/48x48/apps/mdv.png
+	@install -m 644 icons/64x64.png $(HICOLOR_DIR)/64x64/apps/mdv.png
+	@install -m 644 icons/128x128.png $(HICOLOR_DIR)/128x128/apps/mdv.png
+	@install -m 644 icons/256x256.png $(HICOLOR_DIR)/256x256/apps/mdv.png
+	@install -m 644 icons/icon.png $(HICOLOR_DIR)/512x512/apps/mdv.png
+	@printf "[Desktop Entry]\nType=Application\nName=mdv\nGenericName=Markdown Viewer\nComment=Minimalist Markdown Focus Reader\nExec=$(BIN_DIR)/mdv %%U\nIcon=mdv\nTerminal=false\nCategories=Utility;Viewer;Office;\nMimeType=text/markdown;text/x-markdown;\nStartupNotify=true\nStartupWMClass=mdv\n" > $(APP_DIR)/mdv.desktop
 	@update-desktop-database $(APP_DIR) 2>/dev/null || true
+	@gtk-update-icon-cache -f -t $(HICOLOR_DIR) 2>/dev/null || true
 	@xdg-mime default mdv.desktop text/markdown 2>/dev/null || true
 	@xdg-mime default mdv.desktop text/x-markdown 2>/dev/null || true
 	@gio mime text/markdown mdv.desktop 2>/dev/null || true
 	@gio mime text/x-markdown mdv.desktop 2>/dev/null || true
 	@echo "$(GREEN)Created desktop shortcut: $(APP_DIR)/mdv.desktop$(RESET)"
-	@echo "$(GREEN)Installed icon: $(ICON_DIR)/mdv.png$(RESET)"
+	@echo "$(GREEN)Installed icons into $(HICOLOR_DIR)/$(RESET)"
 	@echo "$(GREEN)Associated .md files with mdv$(RESET)"
 
 # Set mdv as default app for markdown files
@@ -97,9 +114,11 @@ associate-mime:
 uninstall:
 	@rm -f $(BIN_DIR)/mdv
 	@rm -f $(APP_DIR)/mdv.desktop
-	@rm -f $(ICON_DIR)/mdv.png
+	@rm -f $(HICOLOR_DIR)/scalable/apps/mdv.svg
+	@rm -f $(HICOLOR_DIR)/*/apps/mdv.png
 	@update-desktop-database $(APP_DIR) 2>/dev/null || true
-	@echo "Removed mdv binary, desktop entry, and icon."
+	@gtk-update-icon-cache -f -t $(HICOLOR_DIR) 2>/dev/null || true
+	@echo "Removed mdv binary, desktop entry, and icons."
 
 # Dependency helpers for distros (no WebKit required!)
 deps-arch:

@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background squircle gradient: deep slate midnight -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#0a0f1d"/>
+    </linearGradient>
+
+    <!-- Border highlight -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.75"/>
+      <stop offset="50%" stop-color="#0ea5e9" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#1e40af" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <!-- Fold flap gradient -->
+    <linearGradient id="foldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <!-- Down arrow gradient -->
+    <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+
+    <!-- Soft drop shadow for outer squircle -->
+    <filter id="outerShadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#000000" flood-opacity="0.55"/>
+    </filter>
+
+    <!-- Fold flap shadow -->
+    <filter id="foldShadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="-4" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Base Document Squircle with Folded Top-Right Corner -->
+  <g filter="url(#outerShadow)">
+    <path d="M 132 32 L 360 32 L 480 152 L 480 380 C 480 435.2 435.2 480 380 480 L 132 480 C 76.8 480 32 435.2 32 380 L 32 132 C 32 76.8 76.8 32 132 32 Z" 
+          fill="url(#bgGrad)" stroke="url(#borderGrad)" stroke-width="6" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Fold Flap with Shadow -->
+  <g filter="url(#foldShadow)">
+    <path d="M 360 32 L 360 128 C 360 141.2 370.8 152 384 152 L 480 152 Z" 
+          fill="url(#foldGrad)" stroke="url(#borderGrad)" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Prominent 'M' Mark (Pure White, high contrast) -->
+  <path d="M 100 348 L 100 180 L 176 264 L 252 180 L 252 348" 
+        fill="none" stroke="#ffffff" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Down Arrow (Sky Blue, Markdown Standard) -->
+  <path d="M 376 180 L 376 304 M 324 260 L 376 348 L 428 260" 
+        fill="none" stroke="url(#arrowGrad)" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Reader / Document Preview Accent Lines -->
+  <!-- Line 1: Heading & Tag -->
+  <rect x="100" y="404" width="180" height="14" rx="7" fill="#64748b"/>
+  <rect x="296" y="404" width="132" height="14" rx="7" fill="#38bdf8" opacity="0.75"/>
+
+  <!-- Line 2: Paragraph text lines -->
+  <rect x="100" y="428" width="240" height="10" rx="5" fill="#475569" opacity="0.8"/>
+  <rect x="356" y="428" width="72" height="10" rx="5" fill="#334155" opacity="0.8"/>
+</svg>

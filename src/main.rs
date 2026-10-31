@@ -36,7 +36,7 @@ fn ensure_window_focus() {
 }
 
 fn load_icon() -> Option<egui::IconData> {
-    let icon_bytes = include_bytes!("../icons/128x128.png");
+    let icon_bytes = include_bytes!("../icons/256x256.png");
     if let Ok(image) = image::load_from_memory(icon_bytes) {
         let rgba = image.to_rgba8();
         let (width, height) = rgba.dimensions();

@@ -1,0 +1,25 @@
+[package]
+name = "mdv"
+version = "0.2.1"
+description = "Native Linux distraction-free Markdown Focus Viewer"
+authors = ["jcx"]
+edition = "2024"
+
+[dependencies]
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "wayland", "x11"] }
+egui = "0.37"
+egui_commonmark = { version = "0.26", features = ["better_syntax_highlighting", "load-images"] }
+egui_extras = { version = "0.37", features = ["image"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+rfd = "0.15"
+notify = "6.1"
+open = "5.3"
+urlencoding = "2.1"
+
+[patch.crates-io]
+egui_commonmark_backend = { path = "vendor/egui_commonmark_backend" }
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+strip = true

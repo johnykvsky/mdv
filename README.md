@@ -1,142 +1,126 @@
 # mdv — Native Linux Markdown Focus Viewer
 
-**mdv** to lekki, minimalistyczny czytnik i przeglądarka plików Markdown dla systemu Linux, stworzony z myślą o czytaniu bez rozpraszaczy (*distraction-free focus reader*). Zbudowany w języku **Rust** przy użyciu frameworka **Tauri v2** oraz natywnego linuksowego silnika **WebKitGTK**.
+**mdv** is a lightweight, distraction-free **Markdown Focus Reader** and viewer for Linux. Built in **100% pure Rust** using **egui** and **egui_commonmark** — zero WebKit, zero JavaScript, and zero browser engine overhead.
 
 ---
 
-## Główne cechy
+## Key Features
 
-* **Pojedynczy widok z szybkim przełącznikiem**: Przełączanie między wyrenderowanym podglądem HTML a kodem źródłowym Markdown (<kbd>Ctrl</kbd> + <kbd>E</kbd> lub <kbd>Tab</kbd>) w tym samym oknie — bez dzielenia ekranu na panele boczne.
-* **Synchronizacja przewijania**: Przełączając widok, zachowujesz dokładną procentową pozycję czytania.
-* **Elastyczna szerokość tekstu**: Domyślnie dopasowuje się do 100% szerokości okna, z możliwością natychmiastowego przełączenia na wycentrowaną kolumnę czytelniczą (<kbd>W</kbd>).
-* **Przełącznik czcionki programistycznej**: Błyskawiczne przełączanie między domyślną czcionką proporcjonalną a programistyczną **JetBrains Mono** (<kbd>F</kbd>) dla idealnego rozróżniania znaków `0`/`O` oraz `1`/`l`/`I`.
-* **Historia nawigacji dokumentów**: Błyskawiczny powrót do poprzednio przeglądanych plików za pomocą <kbd>Alt</kbd> + <kbd>←</kbd>, klawisza <kbd>Backspace</kbd> lub przycisku bocznego myszy (przycisk 3).
-* **Live Auto-Reload (Inotify)**: Automatyczne odświeżanie podglądu w czasie rzeczywistym po zapisaniu zmian w dowolnym edytorze (Vim, Helix, Nano, VSCode itp.).
-* **Motyw jasny i ciemny**: Automatyczne dopasowanie do motywu systemowego (`auto`) lub ręczne przełączanie (<kbd>Ctrl</kbd> + <kbd>T</kbd>).
-* **Tryb skupienia (Zen Mode)**: Ukrywa cały interfejs okna (<kbd>F11</kbd> lub <kbd>Z</kbd>), pozostawiając wyłącznie czysty tekst.
-* **Wsparcie dla CLI**: Możliwość otwarcia pliku bezpośrednio z terminala (`mdv dokument.md`, `mdv ~/notatki.md`).
-* **Zero zależności Node.js**: Interfejs to czysty, statyczny HTML/CSS/JS osadzony bezpośrednio w binarce.
+* **Pure Rust & egui**: Zero browser engine overhead (no WebKit), single self-contained native process, ~20–35 MB RAM footprint, and instantaneous launch (<20 ms).
+* **Single-Viewport Toggle**: Toggle between rendered Markdown preview and raw source (<kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd>) inside the same window — no side-by-side split panes.
+* **Scroll Position Sync**: Seamlessly preserves reading position and relative scroll offset across view toggles.
+* **Responsive Column Width**: Adapts to full window width by default, with an instant toggle to a centered reading column (<kbd>W</kbd>).
+* **Font Switching**: Toggle between clean proportional typography (**Inter**) and programmer's monospace (**JetBrains Mono**) (<kbd>F</kbd>) for unambiguous glyph discrimination (`0`/`O`, `1`/`l`/`I`).
+* **Document Navigation History**: Seamlessly traverse previously viewed documents with <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd>, or mouse thumb back button (button 3 / `Extra1`).
+* **Live Auto-Reload (Inotify)**: Real-time file watching updates the view immediately whenever you save in any text editor (Vim, Helix, Micro, VSCode), with full support for atomic write-and-rename swaps.
+* **Syntax Highlighting**: Hardware-accelerated code block syntax highlighting.
+* **Light and Dark Themes**: Automatically matches system dark/light preferences (`auto`) or manual cycling (<kbd>Ctrl</kbd> + <kbd>T</kbd>).
+* **Zen Focus Mode**: Completely hides toolbar and window chrome (<kbd>F11</kbd> or <kbd>Z</kbd>), leaving pure text. Hover near the top edge to smoothly reveal controls.
+* **CLI Support**: Open files directly from your terminal (`mdv document.md`, `mdv ~/notes.md`).
 
 ---
 
-## Skróty klawiszowe
+## Keyboard Shortcuts
 
-| Skrót | Działanie |
+| Shortcut | Action |
 | :--- | :--- |
-| <kbd>Ctrl</kbd> + <kbd>E</kbd> lub <kbd>Tab</kbd> | **Przełącz widok (Podgląd / Źródło Markdown)** |
-| <kbd>W</kbd> | **Przełącz szerokość (Pełne okno / Wycentrowana kolumna)** |
-| <kbd>F</kbd> | **Przełącz czcionkę (Domyślna proporcjonalna / JetBrains Mono)** |
-| <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd> lub Mysz 3 | **Wróć do poprzedniego pliku (Historia dokumentów)** |
-| <kbd>Ctrl</kbd> + <kbd>T</kbd> | **Przełącz motyw (Auto / Jasny / Ciemny)** |
-| <kbd>F11</kbd> lub <kbd>Z</kbd> | **Tryb Zen / Pełny ekran** |
-| <kbd>Ctrl</kbd> + <kbd>O</kbd> | Otwórz plik przez natywne okno dialogowe |
-| <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> | Powiększ / pomniejsz rozmiar czcionki |
-| <kbd>Ctrl</kbd> + <kbd>0</kbd> | Zresetuj powiększenie czcionki |
-| <kbd>?</kbd> | Pokaż okno pomocy ze skrótami |
-| <kbd>Esc</kbd> | Wyjdź z trybu Zen / Zamknij pomoc |
+| <kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd> | **Toggle View (Preview / Markdown Source)** |
+| <kbd>W</kbd> | **Toggle Width (Full Window / Centered Column)** |
+| <kbd>F</kbd> | **Toggle Font (Inter / JetBrains Mono)** |
+| <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd> or Mouse 3 | **Back in Document History** |
+| <kbd>Ctrl</kbd> + <kbd>T</kbd> | **Cycle Theme (Auto / Light / Dark)** |
+| <kbd>F11</kbd> or <kbd>Z</kbd> | **Zen / Fullscreen Mode** |
+| <kbd>Ctrl</kbd> + <kbd>O</kbd> | Open file via native file dialog |
+| <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> | Zoom UI & font size in / out |
+| <kbd>Ctrl</kbd> + <kbd>0</kbd> | Reset zoom to 100% |
+| <kbd>↑</kbd> / <kbd>↓</kbd> | Scroll up / down |
+| <kbd>PgUp</kbd> / <kbd>PgDn</kbd> | Scroll page up / down |
+| <kbd>Home</kbd> / <kbd>End</kbd> | Jump to top / bottom of document |
+| <kbd>?</kbd> | Show keyboard shortcuts & help dialog |
+| <kbd>Esc</kbd> | Close help / Exit Zen mode / Close application |
 
 ---
 
-## Wymagania systemowe i kompilacja
+## System Requirements & Build
 
-Aplikacja kompiluje się do małego (~10 MB) i szybkiego pliku binarnego.
+`mdv` compiles into a standalone, optimized native binary. It does not require WebKitGTK or Node.js!
 
-### Zależności systemowe
+### System Dependencies
 
 * **Arch Linux / Manjaro:**
   ```bash
   make deps-arch
-  # lub ręcznie: sudo pacman -S --needed base-devel webkit2gtk-4.1 gtk3 libsoup3 noto-fonts-emoji
+  # or manually: sudo pacman -S --needed base-devel libxkbcommon
   ```
 
 * **Linux Mint / Ubuntu / Debian:**
   ```bash
   make deps-mint
-  # lub ręcznie: sudo apt update && sudo apt install -y build-essential libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev fonts-noto-color-emoji
+  # or manually: sudo apt update && sudo apt install -y build-essential libxkbcommon-dev pkg-config
   ```
 
-* **Obsługa kolorowych Emoji (zalecana):**
-  Aplikacja posiada zintegrowany fallback czcionek dla symboli emoji w plikach Markdown. Jeśli w czytanych plikach widzisz puste prostokąty (tzw. *tofu*), zainstaluj systemowy pakiet czcionek emoji:
-  - **Arch Linux / Manjaro:** `sudo pacman -S noto-fonts-emoji`
-  - **Debian / Ubuntu / Mint:** `sudo apt install fonts-noto-color-emoji`
+### Build & Makefile Targets
 
-### Budowanie i zadania Makefile
-
-W katalogu projektu dostępne są następujące polecenia:
+The following commands are available in the project directory:
 
 ```bash
-# Wyświetlenie wszystkich dostępnych celów:
+# Display all available targets:
 make help
 
-# Zbudowanie zoptymalizowanej wersji release:
+# Build optimized release binary:
 make build
 
-# Uruchomienie wersji deweloperskiej z domyślnym ekranem powitalnym:
+# Run debug build with default welcome document:
 make dev
 
-# Uruchomienie z konkretnym plikiem:
+# Run with a specific file:
 make run FILE=SAMPLE.md
 
-# Szybka weryfikacja typów Rust (cargo check):
+# Quick type checking (cargo check):
 make check
 
-# Uruchomienie testów Rust:
+# Run Rust test suite:
 make test
 
-# Usunięcie skompilowanych plików binarnych i artefaktów:
+# Remove compiled binaries and cargo build artifacts:
 make clean
 ```
 
 ---
 
-## Instalacja w systemie i powiązanie z plikami `.md`
+## System Installation & File Associations
 
-Aby móc uruchamiać `mdv` z dowolnego miejsca w terminalu oraz otwierać pliki Markdown podwójnym kliknięciem w menedżerze plików, wykonaj poniższe kroki.
+To launch `mdv` anywhere from your terminal or open Markdown files with a double-click in your file manager:
 
-### Metoda 1: Automatyczna (zalecana)
-
-W repozytorium przygotowane są gotowe reguły `Makefile`:
+### Method 1: Automatic (Recommended)
 
 ```bash
-# 1. Kompiluje program i instaluje/aktualizuje plik wykonywalny do ~/.local/bin/mdv:
+# 1. Compile and install binary to ~/.local/bin/mdv:
 make install
 
-# 2. Tworzy skrót na pulpicie/w menu (~/.local/share/applications), instaluje ikonę oraz rejestruje powiązania MIME:
+# 2. Create desktop entry (~/.local/share/applications), install icon & register MIME associations:
 make install-desktop
 
-# 3. (Opcjonalnie) Samodzielne ponowne przypisanie plików .md jako domyślnych:
+# 3. (Optional) Set mdv as default application for .md files:
 make associate-mime
 
-# 4. Odinstalowanie programu, skrótu desktop oraz ikony:
+# 4. Uninstall binary, desktop shortcut, and icon:
 make uninstall
 ```
 
 ---
 
-### Metoda 2: Ręczna konfiguracja krok po kroku
+### Method 2: Manual Configuration
 
-Jeśli chcesz skonfigurować powiązanie ręcznie w systemie Linux:
-
-#### Krok 1: Kopiowanie pliku wykonywalnego
-Standardowym miejscem na programy użytkownika (niewymagającym uprawnień root/sudo) jest katalog `~/.local/bin`:
-
+#### Step 1: Copy executable binary
 ```bash
-# Upewnij się, że katalog istnieje
 mkdir -p ~/.local/bin
-
-# Skopiuj skompilowany plik
-cp src-tauri/target/release/mdv ~/.local/bin/mdv
-
-# Nadaj uprawnienia do wykonywania
+cp target/release/mdv ~/.local/bin/mdv
 chmod +x ~/.local/bin/mdv
 ```
 
-> **Wskazówka:** Upewnij się, że `~/.local/bin` znajduje się w Twojej zmiennej `$PATH` (w większości nowoczesnych dystrybucji, takich jak Manjaro czy Mint, jest to domyślnie dodane w pliku `~/.bashrc` lub `~/.zshrc`).
-
-#### Krok 2: Utworzenie pliku aktywatora Desktop (`.desktop`)
-Systemy Linux używają plików `.desktop` w katalogu `~/.local/share/applications/`, aby program był widoczny w menu startowym i w menu „Otwórz za pomocą”:
-
-Utwórz plik `~/.local/share/applications/mdv.desktop`:
+#### Step 2: Create desktop launcher (`.desktop`)
+Create `~/.local/share/applications/mdv.desktop`:
 
 ```ini
 [Desktop Entry]
@@ -144,85 +128,72 @@ Type=Application
 Name=mdv
 GenericName=Markdown Viewer
 Comment=Minimalist Markdown Focus Reader
-Exec=/home/<użytkownik>/.local/bin/mdv %U
+Exec=/home/<username>/.local/bin/mdv %U
 Icon=mdv
 Terminal=false
 Categories=Utility;Viewer;Office;
 MimeType=text/markdown;text/x-markdown;
 StartupNotify=true
 ```
+*(Replace `<username>` with your actual Linux user name)*
 
-*(Zastąp `<użytkownik>` swoją nazwą użytkownika w systemie Linux)*
-
-*Znaczenie kluczowych pól:*
-* `Exec=... %U` — parametr `%U` (lub `%f`) informuje system, że kliknięty plik ma zostać przekazany jako ścieżka do naszego programu.
-* `MimeType=text/markdown;text/x-markdown;` — deklaruje, że program obsługuje pliki Markdown.
-
-Następnie odśwież bazę skrótów środowiska graficznego:
+Then update the desktop database:
 ```bash
 update-desktop-database ~/.local/share/applications/
 ```
 
-#### Krok 3: Rejestracja `mdv` jako domyślnej aplikacji dla plików `.md`
-Aby menedżer plików (Nemo w Cinnamon, Nautilus w GNOME, Thunar w XFCE) wiedział, czym otwierać pliki `.md`, powiąż typ MIME:
-
+#### Step 3: Register `mdv` as default handler for `.md` files
 ```bash
-# Ustawienie domyślnej aplikacji dla obu wariantów MIME Markdowna
 gio mime text/markdown mdv.desktop
 gio mime text/x-markdown mdv.desktop
-
-# Dodatkowo w standardzie XDG:
 xdg-mime default mdv.desktop text/markdown
 xdg-mime default mdv.desktop text/x-markdown
 ```
 
-Sprawdzenie, czy skojarzenie działa:
-```bash
-gio mime text/markdown
-# Powinno zwrócić: Default application for “text/markdown”: mdv.desktop
-```
+---
+
+## Archived Version (`legacy_tauri/`) — READ-ONLY
+
+The `legacy_tauri/` folder contains an earlier prototype of `mdv`. **This version is completely deprecated, no longer maintained or supported, and the directory is strictly read-only — no changes should ever be made there.**
+
+### How Does Legacy Differ from the Current Version?
+
+| Aspect | Current Version (`mdv` / root) | Legacy Version (`legacy_tauri/`) |
+| :--- | :--- | :--- |
+| **Architecture** | **100% Pure Rust** (`egui` + `eframe`) | **Tauri v2** + Rust backend + web frontend (HTML/CSS/JS) |
+| **Rendering Engine** | Direct native vector / GPU rendering (`egui_commonmark`) | Browser webview engine (**WebKitGTK**) |
+| **Technology Stack** | Standalone native Rust binary, zero browser stack | Hybrid: Rust, Tauri IPC, DOM tree, JavaScript, CSS stylesheets |
+| **Markdown Parsing** | Direct CommonMark parsing into native `egui` widgets | External JavaScript libraries (`marked.min.js`, `highlight.min.js`) |
+| **System Dependencies** | Standard Linux system libraries (e.g. `libxkbcommon`) | Heavy WebKit ecosystem: `webkit2gtk-4.1`, `libsoup-3.0`, `gtk3`, `javascriptcoregtk-4.1` |
+| **Memory Footprint (RAM)** | **~20–35 MB** | **~100+ MB** (multi-process browser runtime and JS engine) |
+| **Startup Latency** | Instantaneous (<20 ms) | Noticeable delay initializing WebKit and executing scripts |
+| **Status** | **Actively developed main version** | **Archived, unsupported, read-only (do not modify)** |
+
+> [!CAUTION]
+> **The `legacy_tauri/` directory is strictly archival and read-only.** No bug fixes, refactoring, or modifications should be performed there. All ongoing development and codebase improvements take place exclusively in the root pure-Rust `egui` project.
 
 ---
 
-### Metoda 3: Graficzna (w menedżerze plików Nemo / Nautilus)
-
-Możesz to również ustawić całkowicie myszką:
-1. Otwórz menedżer plików i kliknij prawym przyciskiem myszy na dowolny plik z rozszerzeniem `.md`.
-2. Wybierz **Właściwości** (*Properties*).
-3. Przejdź do zakładki **Otwórz za pomocą** (*Open With*).
-4. Z listy aplikacji wybierz **mdv**.
-5. Kliknij przycisk **Ustaw jako domyślne** (*Set as default*).
-
-Od tego momentu podwójne kliknięcie na dowolny plik `.md` natychmiast otworzy go w `mdv`.
-
----
-
-## Struktura projektu
+## Project Structure
 
 ```
 mdv/
-├── Makefile                # Skrypty kompilacji, instalacji i powiązań MIME
-├── README.md               # Podręcznik użytkownika i instrukcja konfiguracji
-├── AGENTS.md               # Wytyczne techniczne dla deweloperów i agentów AI
-├── SAMPLE.md               # Przykładowy dokument demonstracyjny
-├── ui/                     # Statyczny interfejs czytnika
-│   ├── index.html          # Struktura HTML
-│   ├── style.css           # Typografia, motywy Light/Dark, tryb Zen
-│   ├── app.js              # Kontroler widoków, obsługa skrótów i IPC
-│   └── vendor/             # Lokalne zależności offline (marked.js, highlight.js)
-└── src-tauri/              # Backend w języku Rust
-    ├── Cargo.toml          # Zależności Rusta (tauri, notify, rfd, serde)
-    ├── tauri.conf.json     # Konfiguracja okna i uprawnień Tauri v2
-    ├── build.rs            # Skrypt budowania Tauri
-    ├── capabilities/       # Zestawy uprawnień Tauri v2
-    ├── icons/              # Ikony aplikacji dla systemów i menedżerów okien
-    └── src/
-        ├── main.rs         # Punkt wejścia i obsługa flag terminala (--help, -v)
-        └── lib.rs          # Monitorowanie plików (inotify), okna dialogowe i IPC
+├── Makefile                # Build, installation, and MIME association scripts
+├── Cargo.toml              # Rust crate dependencies (eframe, egui, egui_commonmark, notify, rfd)
+├── README.md               # User guide and setup documentation
+├── AGENTS.md               # Architecture and guidelines for human & AI contributors
+├── SAMPLE.md               # Demonstration markdown document
+├── icons/                  # Application icon assets for desktop launchers
+├── legacy_tauri/           # ARCHIVED & READ-ONLY: Deprecated Tauri + WebKitGTK version
+└── src/
+    ├── main.rs             # CLI entry point, window setup, and argument parsing
+    ├── app.rs              # Application state, view switcher, shortcuts, and UI
+    ├── watcher.rs          # Background filesystem watcher (inotify) with atomic save handling
+    └── welcome.rs          # Embedded welcome and shortcut guide document
 ```
 
 ---
 
-## Licencja
+## License
 
-Projekt udostępniony na licencji MIT / Apache 2.0.
+This project is licensed under the MIT / Apache 2.0 license.

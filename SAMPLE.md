@@ -29,7 +29,7 @@
 
 | Toolkit | Binary Size | Memory (RAM) | Distro Portability |
 | :--- | :--- | :--- | :--- |
-| **mdv (Tauri v2 + Rust)** | ~12 MB | ~35 MB | Excellent (Mint & Manjaro) |
+| **mdv (Pure Rust + egui)** | ~25 MB | ~25 MB | Standalone (Zero WebKit) |
 | **Electron-based** | ~140 MB | ~280 MB | Moderate |
 | **Pure GTK4-rs** | ~20 MB | ~45 MB | Distribution-bound |
 

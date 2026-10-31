@@ -1,0 +1,34 @@
+# Rust / Cargo build outputs
+target/
+src-tauri/target/
+src-tauri/gen/
+*.rs.bk
+*.pdb
+rustc-ice-*.txt
+**/mutants.out*/
+
+# Node / frontend tooling (if ever used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & IDE configs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.*.sw?
+*.un~
+.netrwhist
+*~
+.#*
+#*#
+
+# OS & Desktop artifacts
+.DS_Store
+.directory
+.Trash-*
+*.orig
+*.rej

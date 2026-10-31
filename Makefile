@@ -1,17 +1,16 @@
 # ==============================================================================
-# mdv - Native Linux Markdown Focus Viewer
+# mdv - Native Linux Markdown Focus Viewer (Pure Rust & egui)
 # Makefile
 # ==============================================================================
 
 export PATH := $(HOME)/.cargo/bin:$(PATH)
 
 CARGO ?= cargo
-CARGO_FLAGS ?= --manifest-path src-tauri/Cargo.toml
 PREFIX ?= $(HOME)/.local
 BIN_DIR ?= $(PREFIX)/bin
 APP_DIR ?= $(PREFIX)/share/applications
 ICON_DIR ?= $(PREFIX)/share/icons/hicolor/128x128/apps
-TARGET_DIR = src-tauri/target
+TARGET_DIR = target
 
 # Colors for terminal output
 CYAN  := \033[0;36m
@@ -23,10 +22,10 @@ RESET := \033[0m
 all: dev
 
 help:
-	@echo "$(CYAN)mdv - Native Linux Markdown Focus Viewer$(RESET)"
+	@echo "$(CYAN)mdv - Native Linux Markdown Focus Viewer (Pure Rust & egui)$(RESET)"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  $(GREEN)make build$(RESET)           Build optimized release binary (src-tauri/target/release/mdv)"
+	@echo "  $(GREEN)make build$(RESET)           Build optimized release binary ($(TARGET_DIR)/release/mdv)"
 	@echo "  $(GREEN)make run FILE=doc.md$(RESET)     Build & run with a specific file"
 	@echo "  $(GREEN)make dev$(RESET)             Run debug binary with default welcome screen"
 	@echo "  $(GREEN)make check$(RESET)           Run cargo check for fast compilation verification"
@@ -44,28 +43,28 @@ build: release
 
 release:
 	@echo "$(CYAN)Building release binary...$(RESET)"
-	$(CARGO) build --release $(CARGO_FLAGS)
+	$(CARGO) build --release
 	@echo "$(GREEN)Release build complete: $(TARGET_DIR)/release/mdv$(RESET)"
 
 # Build and run with optional file argument: make run FILE=SAMPLE.md
 run:
-	$(CARGO) run $(CARGO_FLAGS) -- $(FILE)
+	$(CARGO) run -- $(FILE)
 
 # Dev mode without arguments (shows welcome / guide)
 dev:
-	$(CARGO) run $(CARGO_FLAGS)
+	$(CARGO) run
 
 # Fast type check
 check:
-	$(CARGO) check $(CARGO_FLAGS)
+	$(CARGO) check
 
 # Test suite
 test:
-	$(CARGO) test $(CARGO_FLAGS)
+	$(CARGO) test
 
 # Clean cargo cache
 clean:
-	$(CARGO) clean $(CARGO_FLAGS)
+	$(CARGO) clean
 
 # Install/update only the binary into user environment (~/.local/bin)
 install: release
@@ -76,7 +75,7 @@ install: release
 # Setup desktop shortcut (.desktop), application icon, and file associations
 install-desktop:
 	@mkdir -p $(APP_DIR) $(ICON_DIR)
-	@install -m 644 src-tauri/icons/128x128.png $(ICON_DIR)/mdv.png
+	@install -m 644 icons/128x128.png $(ICON_DIR)/mdv.png
 	@printf "[Desktop Entry]\nType=Application\nName=mdv\nGenericName=Markdown Viewer\nComment=Minimalist Markdown Focus Reader\nExec=$(BIN_DIR)/mdv %%U\nIcon=mdv\nTerminal=false\nCategories=Utility;Viewer;Office;\nMimeType=text/markdown;text/x-markdown;\nStartupNotify=true\n" > $(APP_DIR)/mdv.desktop
 	@update-desktop-database $(APP_DIR) 2>/dev/null || true
 	@xdg-mime default mdv.desktop text/markdown 2>/dev/null || true
@@ -102,11 +101,10 @@ uninstall:
 	@update-desktop-database $(APP_DIR) 2>/dev/null || true
 	@echo "Removed mdv binary, desktop entry, and icon."
 
-# Dependency helpers for distros
+# Dependency helpers for distros (no WebKit required!)
 deps-arch:
 	@echo "Arch / Manjaro dependencies:"
-	sudo pacman -S --needed base-devel webkit2gtk-4.1 gtk3 libsoup3 noto-fonts-emoji
-
+	sudo pacman -S --needed base-devel libxkbcommon
 deps-mint:
 	@echo "Linux Mint / Ubuntu LTS dependencies:"
-	sudo apt update && sudo apt install -y build-essential libwebkit2gtk-4.1-dev libgtk-3-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev fonts-noto-color-emoji
+	sudo apt update && sudo apt install -y build-essential libxkbcommon-dev pkg-config

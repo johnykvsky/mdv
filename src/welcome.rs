@@ -1,4 +1,6 @@
-pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.2
+#![allow(dead_code)]
+
+pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.3
 
 **mdv** is a native, distraction-free **Markdown Focus Viewer** written purely in Rust.
 

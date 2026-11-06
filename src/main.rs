@@ -9,27 +9,35 @@ use app::MdvApp;
 fn ensure_window_focus() {
     // Cinnamon/Muffin and X11 compositors enforce Focus Stealing Prevention (FSP)
     // when launched from file managers like Double Commander.
-    // An external activation signal via xdotool (if present on X11) bypasses FSP
-    // and brings the window to the active foreground.
+    // If running under X11 and xdotool is present, send an external activation signal
+    // as a fallback. Skip entirely on Wayland or if xdotool is missing.
+    if std::env::var_os("WAYLAND_DISPLAY").is_some() {
+        return;
+    }
+
     std::thread::spawn(|| {
         let pid = std::process::id();
         for _ in 0..20 {
             std::thread::sleep(std::time::Duration::from_millis(50));
-            if let Ok(out) = std::process::Command::new("xdotool")
+            match std::process::Command::new("xdotool")
                 .args(["search", "--pid", &pid.to_string(), "--onlyvisible"])
                 .output()
             {
-                if let Ok(stdout) = String::from_utf8(out.stdout) {
-                    if let Some(win_id) = stdout.lines().next() {
-                        let win_id = win_id.trim();
-                        if !win_id.is_empty() {
-                            let _ = std::process::Command::new("xdotool")
-                                .args(["windowactivate", win_id])
-                                .status();
-                            break;
+                Ok(out) => {
+                    if let Ok(stdout) = String::from_utf8(out.stdout) {
+                        if let Some(win_id) = stdout.lines().next() {
+                            let win_id = win_id.trim();
+                            if !win_id.is_empty() {
+                                let _ = std::process::Command::new("xdotool")
+                                    .args(["windowactivate", win_id])
+                                    .status();
+                                break;
+                            }
                         }
                     }
                 }
+                // If xdotool is not installed (NotFound) or cannot run, stop immediately
+                Err(_) => break,
             }
         }
     });
@@ -50,16 +58,27 @@ fn load_icon() -> Option<egui::IconData> {
 }
 
 fn resolve_path(arg: &str) -> PathBuf {
-    if let Some(stripped) = arg.strip_prefix("~/") {
+    let clean = arg.trim();
+
+    // Strip "file://" URI scheme and decode percent-encoded URLs (common when launched via file managers)
+    let path_str = if let Some(stripped) = clean.strip_prefix("file://") {
+        urlencoding::decode(stripped)
+            .map(|c| c.into_owned())
+            .unwrap_or_else(|_| stripped.to_string())
+    } else {
+        clean.to_string()
+    };
+
+    if let Some(stripped) = path_str.strip_prefix("~/") {
         if let Ok(home) = std::env::var("HOME") {
             return PathBuf::from(home).join(stripped);
         }
-    } else if arg == "~" {
+    } else if path_str == "~" {
         if let Ok(home) = std::env::var("HOME") {
             return PathBuf::from(home);
         }
     }
-    PathBuf::from(arg)
+    PathBuf::from(path_str)
 }
 
 fn main() -> eframe::Result<()> {
@@ -121,4 +140,37 @@ fn main() -> eframe::Result<()> {
             Ok(Box::new(app))
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_path_standard() {
+        assert_eq!(resolve_path("sample.md"), PathBuf::from("sample.md"));
+        assert_eq!(resolve_path("/tmp/test.md"), PathBuf::from("/tmp/test.md"));
+    }
+
+    #[test]
+    fn test_resolve_path_file_uri() {
+        assert_eq!(
+            resolve_path("file:///tmp/test.md"),
+            PathBuf::from("/tmp/test.md")
+        );
+        assert_eq!(
+            resolve_path("file:///tmp/my%20meeting%20notes.md"),
+            PathBuf::from("/tmp/my meeting notes.md")
+        );
+    }
+
+    #[test]
+    fn test_resolve_path_home_expansion() {
+        if let Ok(home) = std::env::var("HOME") {
+            assert_eq!(
+                resolve_path("~/docs/notes.md"),
+                PathBuf::from(home).join("docs/notes.md")
+            );
+        }
+    }
 }

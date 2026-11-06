@@ -9,7 +9,6 @@ use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 
 use crate::icons;
 use crate::watcher::{FileUpdate, FileWatcher};
-use crate::welcome::WELCOME_DOC;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ViewMode {
@@ -52,7 +51,7 @@ pub struct HistoryEntry {
 }
 
 pub struct MdvApp {
-    pub current_file: FileData,
+    pub current_file: Option<FileData>,
     pub view_mode: ViewMode,
     pub width_mode: WidthMode,
     pub font_mode: FontMode,
@@ -92,11 +91,7 @@ impl MdvApp {
         let (file_tx, file_rx) = channel();
 
         let mut app = Self {
-            current_file: FileData {
-                path: None,
-                filename: "Welcome.md".to_string(),
-                content: WELCOME_DOC.to_string(),
-            },
+            current_file: None,
             view_mode: ViewMode::Preview,
             width_mode: WidthMode::Full,
             font_mode: FontMode::Sans,
@@ -133,14 +128,14 @@ impl MdvApp {
     pub fn load_file(&mut self, path: &Path, ctx: &egui::Context) -> Result<(), String> {
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
         if !canonical.is_file() {
-            self.current_file = FileData {
+            self.current_file = Some(FileData {
                 path: Some(canonical.clone()),
                 filename: "File Not Found".to_string(),
                 content: format!(
                     "# File Not Found\n\nThe specified file was not found:\n\n```text\n{}\n```\n\nPlease check that the file path and name are correct.",
                     canonical.display()
                 ),
-            };
+            });
             self.watcher = None;
             return Err(format!("File not found: {}", canonical.display()));
         }
@@ -154,11 +149,11 @@ impl MdvApp {
             .unwrap_or("document.md")
             .to_string();
 
-        self.current_file = FileData {
+        self.current_file = Some(FileData {
             path: Some(canonical.clone()),
             filename: filename.clone(),
             content,
-        };
+        });
 
         // Reset scroll position to top for newly opened file
         self.current_scroll_offset = 0.0;
@@ -182,14 +177,16 @@ impl MdvApp {
     }
 
     pub fn push_history(&mut self) {
-        self.history.push(HistoryEntry {
-            path: self.current_file.path.clone(),
-            filename: self.current_file.filename.clone(),
-            content: self.current_file.content.clone(),
-            scroll_ratio: self.current_scroll_ratio,
-        });
-        if self.history.len() > 50 {
-            self.history.remove(0);
+        if let Some(ref current) = self.current_file {
+            self.history.push(HistoryEntry {
+                path: current.path.clone(),
+                filename: current.filename.clone(),
+                content: current.content.clone(),
+                scroll_ratio: self.current_scroll_ratio,
+            });
+            if self.history.len() > 50 {
+                self.history.remove(0);
+            }
         }
     }
 
@@ -203,11 +200,11 @@ impl MdvApp {
                     return true;
                 }
             } else {
-                self.current_file = FileData {
+                self.current_file = Some(FileData {
                     path: None,
                     filename: prev.filename.clone(),
                     content: prev.content,
-                };
+                });
                 self.watcher = None;
                 self.pending_scroll_ratio = Some(prev.scroll_ratio);
                 self.pending_scroll_offset = None;
@@ -228,7 +225,9 @@ impl MdvApp {
         if let Some(path) = picked {
             self.push_history();
             if let Ok(()) = self.load_file(&path, ctx) {
-                self.set_toast(format!("Loaded {}", self.current_file.filename));
+                if let Some(ref file) = self.current_file {
+                    self.set_toast(format!("Loaded {}", file.filename));
+                }
             }
         }
     }
@@ -276,8 +275,8 @@ impl MdvApp {
 
         let base_dir = self
             .current_file
-            .path
             .as_ref()
+            .and_then(|f| f.path.as_ref())
             .and_then(|p| p.parent().map(|p| p.to_path_buf()))
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
@@ -323,7 +322,9 @@ impl MdvApp {
         if MD_EXTENSIONS.contains(&ext.as_str()) {
             self.push_history();
             if let Ok(()) = self.load_file(&canonical, ctx) {
-                self.set_toast(format!("Opened {}", self.current_file.filename));
+                if let Some(ref file) = self.current_file {
+                    self.set_toast(format!("Opened {}", file.filename));
+                }
             }
         } else {
             // Other files (images, PDFs, documents) -> open in system default app
@@ -558,7 +559,9 @@ impl MdvApp {
             self.go_back(ctx);
         }
         if do_toggle_view {
-            self.toggle_view();
+            if self.current_file.is_some() {
+                self.toggle_view();
+            }
         }
         if do_toggle_width {
             self.toggle_width();
@@ -601,18 +604,26 @@ impl MdvApp {
 
             ui.separator();
 
-            ui.label(
-                RichText::new(&self.current_file.filename)
-                    .strong()
-                    .color(ui.visuals().text_color()),
-            );
+            if let Some(ref file) = self.current_file {
+                ui.label(
+                    RichText::new(&file.filename)
+                        .strong()
+                        .color(ui.visuals().text_color()),
+                );
 
-            if self.current_file.path.is_some() {
-                ui.colored_label(
-                    Color32::from_rgb(52, 199, 89),
-                    RichText::new("● auto-reload").small(),
-                )
-                .on_hover_text("Live updates enabled on file write");
+                if file.path.is_some() {
+                    ui.colored_label(
+                        Color32::from_rgb(52, 199, 89),
+                        RichText::new("● auto-reload").small(),
+                    )
+                    .on_hover_text("Live updates enabled on file write");
+                }
+            } else {
+                ui.label(
+                    RichText::new("No document open")
+                        .italics()
+                        .color(ui.visuals().weak_text_color()),
+                );
             }
 
             // Center / Right Controls
@@ -678,27 +689,29 @@ impl MdvApp {
                 ui.separator();
 
                 // Segmented View Toggle: Preview vs Source
-                ui.horizontal(|ui| {
-                    let is_preview = self.view_mode == ViewMode::Preview;
-                    let is_source = self.view_mode == ViewMode::Source;
+                ui.add_enabled_ui(self.current_file.is_some(), |ui| {
+                    ui.horizontal(|ui| {
+                        let is_preview = self.view_mode == ViewMode::Preview;
+                        let is_source = self.view_mode == ViewMode::Source;
 
-                    if ui
-                        .selectable_label(is_preview, "Preview")
-                        .on_hover_text("Rendered Preview (Ctrl+E or Tab)")
-                        .clicked()
-                        && !is_preview
-                    {
-                        self.toggle_view();
-                    }
+                        if ui
+                            .selectable_label(is_preview, "Preview")
+                            .on_hover_text("Rendered Preview (Ctrl+E or Tab)")
+                            .clicked()
+                            && !is_preview
+                        {
+                            self.toggle_view();
+                        }
 
-                    if ui
-                        .selectable_label(is_source, "Source")
-                        .on_hover_text("Raw Markdown Source (Ctrl+E or Tab)")
-                        .clicked()
-                        && !is_source
-                    {
-                        self.toggle_view();
-                    }
+                        if ui
+                            .selectable_label(is_source, "Source")
+                            .on_hover_text("Raw Markdown Source (Ctrl+E or Tab)")
+                            .clicked()
+                            && !is_source
+                        {
+                            self.toggle_view();
+                        }
+                    });
                 });
             });
         });
@@ -864,11 +877,13 @@ impl eframe::App for MdvApp {
 
         // 1. Process live disk updates from watcher thread
         while let Ok(update) = self.file_rx.try_recv() {
-            if let Some(ref cur_path) = self.current_file.path {
-                if cur_path == &update.path || cur_path.file_name() == update.path.file_name() {
-                    self.current_file.content = update.content;
-                    self.set_toast("Updated from disk");
-                    ctx.request_repaint();
+            if let Some(ref mut cur_file) = self.current_file {
+                if let Some(ref cur_path) = cur_file.path {
+                    if cur_path == &update.path || cur_path.file_name() == update.path.file_name() {
+                        cur_file.content = update.content;
+                        self.set_toast("Updated from disk");
+                        ctx.request_repaint();
+                    }
                 }
             }
         }
@@ -898,6 +913,7 @@ impl eframe::App for MdvApp {
         }
 
         // 4. Main Document Viewport
+        let mut trigger_open_file = false;
         let panel_bg = ui.visuals().panel_fill;
         egui::CentralPanel::default()
             .frame(egui::Frame::new().fill(panel_bg))
@@ -925,103 +941,140 @@ impl eframe::App for MdvApp {
                     ui.style_mut().override_font_id = None;
                 }
 
-                // Compute column width and margins
-                let available_width = ui.available_width();
-                let centered_max_width = 860.0;
-                let horizontal_margin = if self.width_mode == WidthMode::Centered {
-                    ((available_width - centered_max_width) / 2.0).max(24.0)
-                } else {
-                    24.0
-                };
+                if let Some(ref file) = self.current_file {
+                    // Compute column width and margins
+                    let available_width = ui.available_width();
+                    let centered_max_width = 860.0;
+                    let horizontal_margin = if self.width_mode == WidthMode::Centered {
+                        ((available_width - centered_max_width) / 2.0).max(24.0)
+                    } else {
+                        24.0
+                    };
 
-                // ScrollArea with relative scroll synchronization and keyboard scrolling
-                let mut scroll_area = egui::ScrollArea::vertical()
-                    .auto_shrink([false, false]);
+                    // ScrollArea with relative scroll synchronization and keyboard scrolling
+                    let mut scroll_area = egui::ScrollArea::vertical()
+                        .auto_shrink([false, false]);
 
-                if let Some(target) = self.pending_scroll_offset.take() {
-                    scroll_area = scroll_area.vertical_scroll_offset(target);
-                } else if let Some(ratio) = self.pending_scroll_ratio.take() {
-                    let target_offset = ratio * self.max_scroll_offset;
-                    scroll_area = scroll_area.vertical_scroll_offset(target_offset);
-                }
+                    if let Some(target) = self.pending_scroll_offset.take() {
+                        scroll_area = scroll_area.vertical_scroll_offset(target);
+                    } else if let Some(ratio) = self.pending_scroll_ratio.take() {
+                        let target_offset = ratio * self.max_scroll_offset;
+                        scroll_area = scroll_area.vertical_scroll_offset(target_offset);
+                    }
 
-                let line_number_color = ui.visuals().weak_text_color();
+                    let line_number_color = ui.visuals().weak_text_color();
 
-                let scroll_output = scroll_area.show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.add_space(horizontal_margin);
+                    let scroll_output = scroll_area.show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.add_space(horizontal_margin);
 
-                        let content_width = if self.width_mode == WidthMode::Centered {
-                            centered_max_width.min(ui.available_width() - horizontal_margin)
-                        } else {
-                            ui.available_width() - horizontal_margin
-                        };
+                            let content_width = if self.width_mode == WidthMode::Centered {
+                                centered_max_width.min(ui.available_width() - horizontal_margin)
+                            } else {
+                                ui.available_width() - horizontal_margin
+                            };
 
-                        ui.allocate_ui_with_layout(
-                            Vec2::new(content_width, ui.available_height()),
-                            egui::Layout::top_down(egui::Align::Min),
-                            |ui| {
-                                ui.add_space(16.0);
+                            ui.allocate_ui_with_layout(
+                                Vec2::new(content_width, ui.available_height()),
+                                egui::Layout::top_down(egui::Align::Min),
+                                |ui| {
+                                    ui.add_space(16.0);
 
-                                match self.view_mode {
-                                    ViewMode::Preview => {
-                                        let mut viewer = CommonMarkViewer::new();
-                                        viewer = match self.theme_mode {
-                                            ThemeMode::Light => viewer.syntax_theme_light("base16-ocean.light"),
-                                            _ => viewer.syntax_theme_dark("base16-ocean.dark"),
-                                        };
-                                        viewer.show(ui, &mut self.commonmark_cache, &self.current_file.content);
+                                    match self.view_mode {
+                                        ViewMode::Preview => {
+                                            let mut viewer = CommonMarkViewer::new();
+                                            viewer = match self.theme_mode {
+                                                ThemeMode::Light => viewer.syntax_theme_light("base16-ocean.light"),
+                                                _ => viewer.syntax_theme_dark("base16-ocean.dark"),
+                                            };
+                                            viewer.show(ui, &mut self.commonmark_cache, &file.content);
+                                        }
+                                        ViewMode::Source => {
+                                            let lines: Vec<&str> = file.content.lines().collect();
+
+                                            egui::Grid::new("source_lines_grid")
+                                                .num_columns(2)
+                                                .spacing([14.0, 3.0])
+                                                .striped(false)
+                                                .show(ui, |ui| {
+                                                    for (idx, line) in lines.iter().enumerate() {
+                                                        ui.add(
+                                                            egui::Label::new(
+                                                                RichText::new(format!("{:>4}", idx + 1))
+                                                                    .font(FontId::new(base * 0.92, egui::FontFamily::Monospace))
+                                                                    .color(line_number_color),
+                                                            )
+                                                            .selectable(false),
+                                                        );
+
+                                                        ui.add(
+                                                            egui::Label::new(
+                                                                RichText::new(if line.is_empty() { " " } else { line })
+                                                                    .font(FontId::new(base * 0.92, egui::FontFamily::Monospace)),
+                                                            )
+                                                            .wrap(),
+                                                        );
+                                                        ui.end_row();
+                                                    }
+                                                });
+                                        }
                                     }
-                                    ViewMode::Source => {
-                                        let lines: Vec<&str> = self.current_file.content.lines().collect();
 
-                                        egui::Grid::new("source_lines_grid")
-                                            .num_columns(2)
-                                            .spacing([14.0, 3.0])
-                                            .striped(false)
-                                            .show(ui, |ui| {
-                                                for (idx, line) in lines.iter().enumerate() {
-                                                    ui.add(
-                                                        egui::Label::new(
-                                                            RichText::new(format!("{:>4}", idx + 1))
-                                                                .font(FontId::new(base * 0.92, egui::FontFamily::Monospace))
-                                                                .color(line_number_color),
-                                                        )
-                                                        .selectable(false),
-                                                    );
-
-                                                    ui.add(
-                                                        egui::Label::new(
-                                                            RichText::new(if line.is_empty() { " " } else { line })
-                                                                .font(FontId::new(base * 0.92, egui::FontFamily::Monospace)),
-                                                        )
-                                                        .wrap(),
-                                                    );
-                                                    ui.end_row();
-                                                }
-                                            });
-                                    }
-                                }
-
-                                ui.add_space(32.0);
-                            },
-                        );
+                                    ui.add_space(32.0);
+                                },
+                            );
+                        });
                     });
-                });
 
-                // Update scroll bounds and offsets
-                self.viewport_height = scroll_output.inner_rect.height();
-                let max_offset = (scroll_output.content_size.y - self.viewport_height).max(0.0);
-                self.max_scroll_offset = max_offset;
-                self.current_scroll_offset = scroll_output.state.clamped_offset().y;
+                    // Update scroll bounds and offsets
+                    self.viewport_height = scroll_output.inner_rect.height();
+                    let max_offset = (scroll_output.content_size.y - self.viewport_height).max(0.0);
+                    self.max_scroll_offset = max_offset;
+                    self.current_scroll_offset = scroll_output.state.clamped_offset().y;
 
-                // Calculate scroll ratio for synchronized view toggling
-                self.current_scroll_ratio = if max_offset > 0.0 {
-                    (self.current_scroll_offset / max_offset).clamp(0.0, 1.0)
+                    // Calculate scroll ratio for synchronized view toggling
+                    self.current_scroll_ratio = if max_offset > 0.0 {
+                        (self.current_scroll_offset / max_offset).clamp(0.0, 1.0)
+                    } else {
+                        0.0
+                    };
                 } else {
-                    0.0
-                };
+                    // Option A: Subtle centered prompt with an "Open File" button
+                    ui.centered_and_justified(|ui| {
+                        ui.vertical_centered(|ui| {
+                            ui.label(
+                                RichText::new("No document open")
+                                    .size(base * 1.35)
+                                    .strong()
+                                    .color(ui.visuals().text_color()),
+                            );
+                            ui.add_space(8.0);
+                            ui.label(
+                                RichText::new("Open a Markdown file to start reading")
+                                    .size(base * 0.95)
+                                    .color(ui.visuals().weak_text_color()),
+                            );
+                            ui.add_space(18.0);
+                            if icon_button(ui, icons::FOLDER_OPEN, "Open File (Ctrl+O)")
+                                .on_hover_text("Open Markdown File (Ctrl+O)")
+                                .clicked()
+                            {
+                                trigger_open_file = true;
+                            }
+                            ui.add_space(12.0);
+                            ui.label(
+                                RichText::new("Press ? for keyboard shortcuts")
+                                    .size(base * 0.82)
+                                    .color(ui.visuals().weak_text_color()),
+                            );
+                        });
+                    });
+                }
             });
+
+        if trigger_open_file {
+            self.open_file_dialog(&ctx);
+        }
 
         // 5. Intercept hyperlinks clicked in markdown preview
         let mut clicked_url = None;

@@ -132,12 +132,13 @@ Type=Application
 Name=mdv
 GenericName=Markdown Viewer
 Comment=Minimalist Markdown Focus Reader
-Exec=/home/<username>/.local/bin/mdv %U
+Exec=/home/<username>/.local/bin/mdv %F
 Icon=mdv
 Terminal=false
 Categories=Utility;Viewer;Office;
 MimeType=text/markdown;text/x-markdown;
 StartupNotify=true
+StartupWMClass=mdv
 ```
 *(Replace `<username>` with your actual Linux user name)*
 

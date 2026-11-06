@@ -92,7 +92,7 @@ install-desktop:
 	@install -m 644 icons/128x128.png $(HICOLOR_DIR)/128x128/apps/mdv.png
 	@install -m 644 icons/256x256.png $(HICOLOR_DIR)/256x256/apps/mdv.png
 	@install -m 644 icons/icon.png $(HICOLOR_DIR)/512x512/apps/mdv.png
-	@printf "[Desktop Entry]\nType=Application\nName=mdv\nGenericName=Markdown Viewer\nComment=Minimalist Markdown Focus Reader\nExec=$(BIN_DIR)/mdv %%U\nIcon=mdv\nTerminal=false\nCategories=Utility;Viewer;Office;\nMimeType=text/markdown;text/x-markdown;\nStartupNotify=true\nStartupWMClass=mdv\n" > $(APP_DIR)/mdv.desktop
+	@printf "[Desktop Entry]\nType=Application\nName=mdv\nGenericName=Markdown Viewer\nComment=Minimalist Markdown Focus Reader\nExec=$(BIN_DIR)/mdv %%F\nIcon=mdv\nTerminal=false\nCategories=Utility;Viewer;Office;\nMimeType=text/markdown;text/x-markdown;\nStartupNotify=true\nStartupWMClass=mdv\n" > $(APP_DIR)/mdv.desktop
 	@update-desktop-database $(APP_DIR) 2>/dev/null || true
 	@gtk-update-icon-cache -f -t $(HICOLOR_DIR) 2>/dev/null || true
 	@xdg-mime default mdv.desktop text/markdown 2>/dev/null || true

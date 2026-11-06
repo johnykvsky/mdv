@@ -369,7 +369,7 @@ Measured via X11 Window Manager mapping events (`MapState: IsViewable`):
 | :--- | :--- | :--- | :--- |
 | **Dynamic Shared Libraries (`ldd`)** | **{egui_lib_count}** | **{tauri_lib_count}** | **139 fewer dynamic library dependencies** |
 | **Runtime Requirements** | Base C library (`glibc`/`musl`) + OpenGL | WebKitGTK (`webkit2gtk-4.1`), GTK 3, libsoup-3.0, GStreamer, JavaScriptCore | **Zero dependency hell across Linux distros** |
-| **Binary Executable Size** | {egui_bin_size} MB | {tauri_bin_size} MB | `mdv_egui` embeds 4 complete TTF fonts (Inter & JetBrains Mono) directly in the binary |
+| **Binary Executable Size** | {egui_bin_size} MB | {tauri_bin_size} MB | `mdv_egui` embeds 4 complete TTF fonts (Inter NL & JetBrains Mono NL) directly in the binary |
 | **Wayland & X11 Portability** | Native pure-Rust windowing (`winit`/`eframe`) | Relies on GTK3 WebKit backend | Instant compatibility with any Linux compositor |
 
 ---

@@ -9,7 +9,7 @@ Welcome to **`mdv`** (Markdown Viewer), a native Linux, distraction-free **Markd
 - **100% Pure Rust & Zero WebKit**: No webview, no JavaScript, no CSS, and no runtime browser engines. Minimal footprint (~25 MB RAM) with instantaneous startup.
 - **Distraction-Free Focus & Responsive Width**: Clean typography with flexible layout. Adapts to full window width by default, with option to toggle to a centered reading column (<kbd>W</kbd>).
 - **Single-Viewport Toggle**: Toggle between **Rendered Preview** and **Raw Source** inside the *same main window* (no side-by-side panels). Relative scroll position is preserved across toggles. Source view renders line-by-line with clean non-selectable line numbers and text wrapping (<kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd>).
-- **Font Switching**: Toggle between modern clean sans-serif (**Inter**) and programmer's monospace (**JetBrains Mono**) (<kbd>F</kbd>) for unambiguous glyph discrimination (`0`/`O`, `1`/`l`/`I`).
+- **Font Switching**: Toggle between modern clean sans-serif (**Inter NL**) and programmer's monospace (**JetBrains Mono NL**) (<kbd>F</kbd>) for unambiguous glyph discrimination (`0`/`O`, `1`/`l`/`I`).
 - **Document Navigation History**: Seamlessly traverse previously viewed documents with <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd>, or mouse thumb button (button 3 / `Extra1`).
 - **Live Auto-Reload**: Watches files on disk via `notify`. When the user edits and saves in any text editor (Vim, Helix, Micro, VSCode), `mdv` updates the view instantly. Handles atomic saves (write-and-rename) common in Linux editors.
 - **Font & UI Zoom Controls**: Dynamic vector scaling with <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd> and reset with <kbd>Ctrl</kbd> + <kbd>0</kbd>.

@@ -22,7 +22,7 @@ pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.1
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd> | **Toggle Preview / Source** |
 | <kbd>W</kbd> | **Toggle Full Width / Centered Column** |
-| <kbd>F</kbd> | **Toggle Font (Inter / JetBrains Mono)** |
+| <kbd>F</kbd> | **Toggle Font (Inter NL / JetBrains Mono NL)** |
 | <kbd>Alt</kbd> + <kbd>←</kbd> or <kbd>Backspace</kbd> | **Back in Document History** |
 | <kbd>Ctrl</kbd> + <kbd>O</kbd> | **Open Markdown File** |
 | <kbd>Ctrl</kbd> + <kbd>T</kbd> | **Cycle Theme (Auto / Light / Dark)** |

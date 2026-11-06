@@ -83,7 +83,7 @@ pub struct MdvApp {
 
 impl MdvApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_file: Option<PathBuf>) -> Self {
-        // Install custom embedded typography: Inter (Clean Sans) and JetBrains Mono (Code)
+        // Install custom embedded typography: Inter NL (Clean Sans) and JetBrains Mono NL (Code)
         setup_custom_fonts(&cc.egui_ctx);
 
         // Install image loaders for egui_extras
@@ -359,11 +359,11 @@ impl MdvApp {
     pub fn toggle_font(&mut self) {
         self.font_mode = match self.font_mode {
             FontMode::Sans => {
-                self.set_toast("Font: JetBrains Mono");
+                self.set_toast("Font: JetBrains Mono NL");
                 FontMode::Mono
             }
             FontMode::Mono => {
-                self.set_toast("Font: Inter (Clean Sans)");
+                self.set_toast("Font: Inter NL (Clean Sans)");
                 FontMode::Sans
             }
         };
@@ -653,11 +653,11 @@ impl MdvApp {
 
                 // Font Toggle
                 let font_label = match self.font_mode {
-                    FontMode::Sans => "Inter",
-                    FontMode::Mono => "JetBrains",
+                    FontMode::Sans => "Inter NL",
+                    FontMode::Mono => "JetBrains NL",
                 };
                 if icon_button(ui, icons::TEXT_AA, font_label)
-                    .on_hover_text("Toggle Font (F): Inter (Clean Sans) / JetBrains Mono")
+                    .on_hover_text("Toggle Font (F): Inter NL (Clean Sans) / JetBrains Mono NL")
                     .clicked()
                 {
                     self.toggle_font();
@@ -734,7 +734,7 @@ impl MdvApp {
                         ui.end_row();
 
                         ui.label(RichText::new("F").strong().monospace());
-                        ui.label("Toggle Font (Inter / JetBrains Mono)");
+                        ui.label("Toggle Font (Inter NL / JetBrains Mono NL)");
                         ui.end_row();
 
                         ui.label(RichText::new("Alt + ← / Backspace").strong().monospace());
@@ -1093,31 +1093,31 @@ fn icon_button(ui: &mut Ui, icon: &str, text: &str) -> egui::Response {
 fn setup_custom_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
-    // Register Inter (Modern Clean Sans)
+    // Register Inter NL (Modern Clean Sans - No Ligatures)
     fonts.font_data.insert(
-        "Inter-Regular".to_owned(),
+        "InterNL-Regular".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/Inter-Regular.ttf"
+            "../fonts/InterNL-Regular.ttf"
         ))),
     );
     fonts.font_data.insert(
-        "Inter-Bold".to_owned(),
+        "InterNL-Bold".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/Inter-Bold.ttf"
+            "../fonts/InterNL-Bold.ttf"
         ))),
     );
 
-    // Register JetBrains Mono (Programmer's Font)
+    // Register JetBrains Mono NL (Programmer's Font - No Ligatures)
     fonts.font_data.insert(
-        "JetBrainsMono-Regular".to_owned(),
+        "JetBrainsMonoNL-Regular".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/JetBrainsMono-Regular.ttf"
+            "../fonts/JetBrainsMonoNL-Regular.ttf"
         ))),
     );
     fonts.font_data.insert(
-        "JetBrainsMono-Bold".to_owned(),
+        "JetBrainsMonoNL-Bold".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/JetBrainsMono-Bold.ttf"
+            "../fonts/JetBrainsMonoNL-Bold.ttf"
         ))),
     );
 
@@ -1135,20 +1135,20 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         vec!["Phosphor".to_owned()],
     );
 
-    // Inter as primary proportional font (with Phosphor fallback for icons)
+    // Inter NL as primary proportional font (with Phosphor fallback for icons)
     let prop_family = fonts
         .families
         .entry(egui::FontFamily::Proportional)
         .or_default();
-    prop_family.insert(0, "Inter-Regular".to_owned());
+    prop_family.insert(0, "InterNL-Regular".to_owned());
     prop_family.push("Phosphor".to_owned());
 
-    // JetBrains Mono as primary monospace font (with Phosphor fallback for icons)
+    // JetBrains Mono NL as primary monospace font (with Phosphor fallback for icons)
     let mono_family = fonts
         .families
         .entry(egui::FontFamily::Monospace)
         .or_default();
-    mono_family.insert(0, "JetBrainsMono-Regular".to_owned());
+    mono_family.insert(0, "JetBrainsMonoNL-Regular".to_owned());
     mono_family.push("Phosphor".to_owned());
 
     ctx.set_fonts(fonts);

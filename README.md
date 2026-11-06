@@ -10,7 +10,7 @@
 * **Single-Viewport Toggle**: Toggle between rendered Markdown preview and raw source (<kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd>) inside the same window — no side-by-side split panes.
 * **Scroll Position Sync**: Seamlessly preserves reading position and relative scroll offset across view toggles.
 * **Responsive Column Width**: Adapts to full window width by default, with an instant toggle to a centered reading column (<kbd>W</kbd>).
-* **Font Switching**: Toggle between clean proportional typography (**Inter**) and programmer's monospace (**JetBrains Mono**) (<kbd>F</kbd>) for unambiguous glyph discrimination (`0`/`O`, `1`/`l`/`I`).
+* **Font Switching**: Toggle between clean proportional typography (**Inter NL**) and programmer's monospace (**JetBrains Mono NL**) (<kbd>F</kbd>) for unambiguous glyph discrimination (`0`/`O`, `1`/`l`/`I`).
 * **Document Navigation History**: Seamlessly traverse previously viewed documents with <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd>, or mouse thumb back button (button 3 / `Extra1`).
 * **Live Auto-Reload (Inotify)**: Real-time file watching updates the view immediately whenever you save in any text editor (Vim, Helix, Micro, VSCode), with full support for atomic write-and-rename swaps.
 * **Syntax Highlighting**: Hardware-accelerated code block syntax highlighting.
@@ -26,7 +26,7 @@
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd> | **Toggle View (Preview / Markdown Source)** |
 | <kbd>W</kbd> | **Toggle Width (Full Window / Centered Column)** |
-| <kbd>F</kbd> | **Toggle Font (Inter / JetBrains Mono)** |
+| <kbd>F</kbd> | **Toggle Font (Inter NL / JetBrains Mono NL)** |
 | <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd> or Mouse 3 | **Back in Document History** |
 | <kbd>Ctrl</kbd> + <kbd>T</kbd> | **Cycle Theme (Auto / Light / Dark)** |
 | <kbd>F11</kbd> or <kbd>Z</kbd> | **Zen / Fullscreen Mode** |

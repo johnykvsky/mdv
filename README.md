@@ -29,6 +29,8 @@
 | Shortcut | Action |
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd> | **Toggle View (Preview / Markdown Source)** |
+| <kbd>Ctrl</kbd> + <kbd>C</kbd> | **Copy Selected Text (Source / Code View)** |
+| <kbd>Alt</kbd> + <kbd>Z</kbd> | **Toggle Word Wrap (Source / Code View)** |
 | <kbd>W</kbd> | **Toggle Width (Full Window / Centered Column)** |
 | <kbd>F</kbd> | **Toggle Font (Inter NL / JetBrains Mono NL)** |
 | <kbd>Alt</kbd> + <kbd>←</kbd>, <kbd>Backspace</kbd> or Mouse 3 | **Back in Document History** |

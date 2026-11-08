@@ -57,6 +57,7 @@ pub struct MdvApp {
     pub font_mode: FontMode,
     pub theme_mode: ThemeMode,
     pub font_size: f32,
+    pub word_wrap: bool,
     pub is_zen_mode: bool,
     pub show_shortcuts_modal: bool,
     pub toast: Option<(String, Instant)>,
@@ -97,6 +98,7 @@ impl MdvApp {
             font_mode: FontMode::Sans,
             theme_mode: ThemeMode::Auto,
             font_size: 16.0,
+            word_wrap: true,
             is_zen_mode: false,
             show_shortcuts_modal: false,
             toast: None,
@@ -357,6 +359,15 @@ impl MdvApp {
         };
     }
 
+    pub fn toggle_word_wrap(&mut self) {
+        self.word_wrap = !self.word_wrap;
+        self.set_toast(if self.word_wrap {
+            "Word Wrap: ON"
+        } else {
+            "Word Wrap: OFF"
+        });
+    }
+
     pub fn toggle_font(&mut self) {
         self.font_mode = match self.font_mode {
             FontMode::Sans => {
@@ -426,6 +437,7 @@ impl MdvApp {
         let mut do_back = false;
         let mut do_toggle_view = false;
         let mut do_toggle_width = false;
+        let mut do_toggle_word_wrap = false;
         let mut do_toggle_font = false;
         let mut do_open_dialog = false;
         let mut do_cycle_theme = false;
@@ -494,6 +506,11 @@ impl MdvApp {
             // W: Toggle Width (without ctrl/alt)
             if !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::W) {
                 do_toggle_width = true;
+            }
+
+            // Alt + Z: Toggle Word Wrap
+            if i.modifiers.alt && i.key_pressed(Key::Z) {
+                do_toggle_word_wrap = true;
             }
 
             // F: Toggle Font (without ctrl/alt)
@@ -565,6 +582,9 @@ impl MdvApp {
         }
         if do_toggle_width {
             self.toggle_width();
+        }
+        if do_toggle_word_wrap {
+            self.toggle_word_wrap();
         }
         if do_toggle_font {
             self.toggle_font();
@@ -686,6 +706,18 @@ impl MdvApp {
                     self.toggle_width();
                 }
 
+                // Word Wrap Toggle (for Source view)
+                if self.view_mode == ViewMode::Source {
+                    let wrap_text = if self.word_wrap { "Wrap: ON" } else { "Wrap: OFF" };
+                    if ui
+                        .selectable_label(self.word_wrap, wrap_text)
+                        .on_hover_text("Toggle Word Wrap in Source View (Alt+Z)")
+                        .clicked()
+                    {
+                        self.toggle_word_wrap();
+                    }
+                }
+
                 ui.separator();
 
                 // Segmented View Toggle: Preview vs Source
@@ -740,6 +772,14 @@ impl MdvApp {
                     .show(ui, |ui| {
                         ui.label(RichText::new("Ctrl + E / Tab").strong().monospace());
                         ui.label("Toggle Preview / Raw Source");
+                        ui.end_row();
+
+                        ui.label(RichText::new("Ctrl + C").strong().monospace());
+                        ui.label("Copy Selected Text (Source View)");
+                        ui.end_row();
+
+                        ui.label(RichText::new("Alt + Z").strong().monospace());
+                        ui.label("Toggle Word Wrap (Source View)");
                         ui.end_row();
 
                         ui.label(RichText::new("W").strong().monospace());
@@ -963,6 +1003,7 @@ impl eframe::App for MdvApp {
                     }
 
                     let line_number_color = ui.visuals().weak_text_color();
+                    let mut copy_toast = false;
 
                     let scroll_output = scroll_area.show(ui, |ui| {
                         ui.horizontal(|ui| {
@@ -990,33 +1031,114 @@ impl eframe::App for MdvApp {
                                             viewer.show(ui, &mut self.commonmark_cache, &file.content);
                                         }
                                         ViewMode::Source => {
-                                            let lines: Vec<&str> = file.content.lines().collect();
+                                            let font_id = FontId::new(base * 0.92, egui::FontFamily::Monospace);
+                                            let total_lines = file.content.lines().count().max(1);
+                                            let line_num_digits = format!("{}", total_lines).len().max(3);
+                                            let digit_width = ui.fonts_mut(|f| f.glyph_width(&font_id, '0')).max(base * 0.58);
+                                            let gutter_width = (line_num_digits as f32 + 2.0) * digit_width;
+                                            let code_width = (content_width - gutter_width).max(80.0);
 
-                                            egui::Grid::new("source_lines_grid")
-                                                .num_columns(2)
-                                                .spacing([14.0, 3.0])
-                                                .striped(false)
-                                                .show(ui, |ui| {
-                                                    for (idx, line) in lines.iter().enumerate() {
-                                                        ui.add(
-                                                            egui::Label::new(
-                                                                RichText::new(format!("{:>4}", idx + 1))
-                                                                    .font(FontId::new(base * 0.92, egui::FontFamily::Monospace))
-                                                                    .color(line_number_color),
-                                                            )
-                                                            .selectable(false),
-                                                        );
+                                            let max_line_len = file.content.lines().map(|l| l.chars().count()).max().unwrap_or(0);
+                                            let max_text_width = (max_line_len as f32 + 4.0) * digit_width;
+                                            let text_width = if self.word_wrap {
+                                                code_width
+                                            } else {
+                                                max_text_width.max(code_width)
+                                            };
 
-                                                        ui.add(
-                                                            egui::Label::new(
-                                                                RichText::new(if line.is_empty() { " " } else { line })
-                                                                    .font(FontId::new(base * 0.92, egui::FontFamily::Monospace)),
-                                                            )
-                                                            .wrap(),
-                                                        );
-                                                        ui.end_row();
+                                            let start_pos = ui.cursor().min;
+                                            let word_wrap = self.word_wrap;
+
+                                            ui.horizontal_top(|ui| {
+                                                ui.add_space(gutter_width);
+
+                                                let mut content = file.content.as_str();
+                                                let layouter_font_id = font_id.clone();
+                                                let mut layouter = move |ui: &Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
+                                                    let max_w = if word_wrap { wrap_width } else { f32::INFINITY };
+                                                    let mut layout_job = egui::text::LayoutJob::simple(
+                                                        buf.as_str().to_string(),
+                                                        layouter_font_id.clone(),
+                                                        ui.visuals().text_color(),
+                                                        max_w,
+                                                    );
+                                                    layout_job.keep_trailing_whitespace = true;
+                                                    ui.fonts_mut(|f| f.layout_job(layout_job))
+                                                };
+
+                                                let output = if word_wrap {
+                                                    egui::TextEdit::multiline(&mut content)
+                                                        .id_salt("source_text_edit")
+                                                        .font(font_id.clone())
+                                                        .text_color(ui.visuals().text_color())
+                                                        .desired_width(text_width)
+                                                        .desired_rows(1)
+                                                        .frame(egui::Frame::NONE)
+                                                        .margin(egui::Margin::ZERO)
+                                                        .layouter(&mut layouter)
+                                                        .show(ui)
+                                                } else {
+                                                    egui::ScrollArea::horizontal()
+                                                        .id_salt("source_hscroll")
+                                                        .auto_shrink([false, false])
+                                                        .show(ui, |ui| {
+                                                            egui::TextEdit::multiline(&mut content)
+                                                                .id_salt("source_text_edit")
+                                                                .font(font_id.clone())
+                                                                .text_color(ui.visuals().text_color())
+                                                                .desired_width(text_width)
+                                                                .desired_rows(1)
+                                                                .frame(egui::Frame::NONE)
+                                                                .margin(egui::Margin::ZERO)
+                                                                .layouter(&mut layouter)
+                                                                .show(ui)
+                                                        })
+                                                        .inner
+                                                };
+
+                                                // Paint non-selectable line numbers aligned with each logical line
+                                                let painter = ui.painter();
+                                                let right_x = start_pos.x + gutter_width - (digit_width * 0.8);
+                                                let mut line_num = 1;
+                                                let mut is_new_line = true;
+
+                                                for placed_row in &output.galley.rows {
+                                                    if is_new_line {
+                                                        let row_y = output.galley_pos.y + placed_row.pos.y;
+                                                        if ui.is_rect_visible(egui::Rect::from_min_size(
+                                                            egui::pos2(start_pos.x, row_y),
+                                                            egui::vec2(gutter_width, placed_row.size.y),
+                                                        )) {
+                                                            painter.text(
+                                                                egui::pos2(right_x, row_y),
+                                                                egui::Align2::RIGHT_TOP,
+                                                                line_num.to_string(),
+                                                                font_id.clone(),
+                                                                line_number_color,
+                                                            );
+                                                        }
+                                                        line_num += 1;
                                                     }
-                                                });
+                                                    is_new_line = placed_row.ends_with_newline;
+                                                }
+
+                                                // Handle Ctrl+C copy of selected text
+                                                if let Some(cursor_range) = output.cursor_range {
+                                                    if !cursor_range.is_empty() {
+                                                        let copy_requested = ui.input(|i| {
+                                                            (i.modifiers.command_only() && i.key_pressed(Key::C))
+                                                                || i.events.iter().any(|e| matches!(e, egui::Event::Copy))
+                                                        });
+                                                        if copy_requested {
+                                                            let selected_text = cursor_range.slice_str(&file.content);
+                                                            if !selected_text.is_empty() {
+                                                                ui.ctx().copy_text(selected_text.to_string());
+                                                                copy_toast = true;
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            });
                                         }
                                     }
 
@@ -1025,6 +1147,10 @@ impl eframe::App for MdvApp {
                             );
                         });
                     });
+
+                    if copy_toast {
+                        self.set_toast("Copied selected text");
+                    }
 
                     // Update scroll bounds and offsets
                     self.viewport_height = scroll_output.inner_rect.height();
@@ -1205,4 +1331,98 @@ fn setup_custom_fonts(ctx: &egui::Context) {
     mono_family.push("Phosphor".to_owned());
 
     ctx.set_fonts(fonts);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_view_mode_toggle() {
+        let (file_tx, file_rx) = channel();
+        let mut app = MdvApp {
+            current_file: Some(FileData {
+                path: None,
+                filename: "test.md".to_string(),
+                content: "# Hello\nWorld\n".to_string(),
+            }),
+            view_mode: ViewMode::Preview,
+            width_mode: WidthMode::Full,
+            font_mode: FontMode::Sans,
+            theme_mode: ThemeMode::Auto,
+            font_size: 16.0,
+            word_wrap: true,
+            is_zen_mode: false,
+            show_shortcuts_modal: false,
+            toast: None,
+            focus_frames: 0,
+            history: Vec::new(),
+            current_scroll_ratio: 0.5,
+            pending_scroll_ratio: None,
+            current_scroll_offset: 0.0,
+            max_scroll_offset: 100.0,
+            viewport_height: 600.0,
+            pending_scroll_offset: None,
+            watcher: None,
+            file_rx,
+            file_tx,
+            commonmark_cache: CommonMarkCache::default(),
+        };
+
+        app.toggle_view();
+        assert_eq!(app.view_mode, ViewMode::Source);
+        assert_eq!(app.pending_scroll_ratio, Some(0.5));
+
+        app.toggle_view();
+        assert_eq!(app.view_mode, ViewMode::Preview);
+        assert_eq!(app.pending_scroll_ratio, Some(0.5));
+    }
+
+    #[test]
+    fn test_selected_text_slice() {
+        let text = "Line 1\nLine 2\nLine 3\n";
+        let range = egui::text::CCursorRange::two(
+            egui::text::CCursor::new(7),
+            egui::text::CCursor::new(13),
+        );
+        let selected = range.slice_str(text);
+        assert_eq!(selected, "Line 2");
+    }
+
+    #[test]
+    fn test_word_wrap_toggle() {
+        let (file_tx, file_rx) = channel();
+        let mut app = MdvApp {
+            current_file: None,
+            view_mode: ViewMode::Source,
+            width_mode: WidthMode::Full,
+            font_mode: FontMode::Sans,
+            theme_mode: ThemeMode::Auto,
+            font_size: 16.0,
+            word_wrap: true,
+            is_zen_mode: false,
+            show_shortcuts_modal: false,
+            toast: None,
+            focus_frames: 0,
+            history: Vec::new(),
+            current_scroll_ratio: 0.0,
+            pending_scroll_ratio: None,
+            current_scroll_offset: 0.0,
+            max_scroll_offset: 0.0,
+            viewport_height: 600.0,
+            pending_scroll_offset: None,
+            watcher: None,
+            file_rx,
+            file_tx,
+            commonmark_cache: CommonMarkCache::default(),
+        };
+
+        assert!(app.word_wrap);
+        app.toggle_word_wrap();
+        assert!(!app.word_wrap);
+        assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Word Wrap: OFF"));
+        app.toggle_word_wrap();
+        assert!(app.word_wrap);
+        assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Word Wrap: ON"));
+    }
 }

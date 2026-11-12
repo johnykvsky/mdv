@@ -83,7 +83,7 @@ pub struct MdvApp {
 
 impl MdvApp {
     pub fn new(cc: &eframe::CreationContext<'_>, initial_file: Option<PathBuf>) -> Self {
-        // Install custom embedded typography: Inter NL (Clean Sans) and JetBrains Mono NL (Code)
+        // Install custom embedded typography: Source Sans 3 and JetBrains Mono NL (Code)
         setup_custom_fonts(&cc.egui_ctx);
 
         // Install image loaders for egui_extras
@@ -139,6 +139,10 @@ impl MdvApp {
                 ),
             });
             self.watcher = None;
+            ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+                "File Not Found - mdv v{}",
+                env!("CARGO_PKG_VERSION")
+            )));
             return Err(format!("File not found: {}", canonical.display()));
         }
 
@@ -174,7 +178,11 @@ impl MdvApp {
             }
         }
 
-        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!("{} - mdv", filename)));
+        ctx.send_viewport_cmd(egui::ViewportCommand::Title(format!(
+            "{} - mdv v{}",
+            filename,
+            env!("CARGO_PKG_VERSION")
+        )));
         Ok(())
     }
 
@@ -375,7 +383,7 @@ impl MdvApp {
                 FontMode::Mono
             }
             FontMode::Mono => {
-                self.set_toast("Font: Inter NL (Clean Sans)");
+                self.set_toast("Font: Source Sans 3");
                 FontMode::Sans
             }
         };
@@ -684,11 +692,11 @@ impl MdvApp {
 
                 // Font Toggle
                 let font_label = match self.font_mode {
-                    FontMode::Sans => "Inter NL",
+                    FontMode::Sans => "Source Sans 3",
                     FontMode::Mono => "JetBrains NL",
                 };
                 if icon_button(ui, icons::TEXT_AA, font_label)
-                    .on_hover_text("Toggle Font (F): Inter NL (Clean Sans) / JetBrains Mono NL")
+                    .on_hover_text("Toggle Font (F): Source Sans 3 / JetBrains Mono NL")
                     .clicked()
                 {
                     self.toggle_font();
@@ -787,7 +795,7 @@ impl MdvApp {
                         ui.end_row();
 
                         ui.label(RichText::new("F").strong().monospace());
-                        ui.label("Toggle Font (Inter NL / JetBrains Mono NL)");
+                        ui.label("Toggle Font (Source Sans 3 / JetBrains Mono NL)");
                         ui.end_row();
 
                         ui.label(RichText::new("Alt + ← / Backspace").strong().monospace());
@@ -1272,17 +1280,17 @@ fn icon_button(ui: &mut Ui, icon: &str, text: &str) -> egui::Response {
 fn setup_custom_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
-    // Register Inter NL (Modern Clean Sans - No Ligatures)
+    // Register Source Sans 3 (Modern Clean Humanist Sans - High Readability)
     fonts.font_data.insert(
-        "InterNL-Regular".to_owned(),
+        "SourceSans3-Regular".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/InterNL-Regular.ttf"
+            "../fonts/SourceSans3-Regular.ttf"
         ))),
     );
     fonts.font_data.insert(
-        "InterNL-Bold".to_owned(),
+        "SourceSans3-Bold".to_owned(),
         std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
-            "../fonts/InterNL-Bold.ttf"
+            "../fonts/SourceSans3-Bold.ttf"
         ))),
     );
 
@@ -1314,12 +1322,12 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         vec!["Phosphor".to_owned()],
     );
 
-    // Inter NL as primary proportional font (with Phosphor fallback for icons)
+    // Source Sans 3 as primary proportional font (with Phosphor fallback for icons)
     let prop_family = fonts
         .families
         .entry(egui::FontFamily::Proportional)
         .or_default();
-    prop_family.insert(0, "InterNL-Regular".to_owned());
+    prop_family.insert(0, "SourceSans3-Regular".to_owned());
     prop_family.push("Phosphor".to_owned());
 
     // JetBrains Mono NL as primary monospace font (with Phosphor fallback for icons)

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.4
+pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.5
 
 **mdv** is a native, distraction-free **Markdown Focus Viewer** written purely in Rust.
 
@@ -26,7 +26,7 @@ pub const WELCOME_DOC: &str = r#"# Welcome to mdv v0.2.4
 | <kbd>Ctrl</kbd> + <kbd>C</kbd> | **Copy Selected Text (Source View)** |
 | <kbd>Alt</kbd> + <kbd>Z</kbd> | **Toggle Word Wrap (Source View)** |
 | <kbd>W</kbd> | **Toggle Full Width / Centered Column** |
-| <kbd>F</kbd> | **Toggle Font (Inter NL / JetBrains Mono NL)** |
+| <kbd>F</kbd> | **Toggle Font (Source Sans 3 / JetBrains Mono NL)** |
 | <kbd>Alt</kbd> + <kbd>←</kbd> or <kbd>Backspace</kbd> | **Back in Document History** |
 | <kbd>Ctrl</kbd> + <kbd>O</kbd> | **Open Markdown File** |
 | <kbd>Ctrl</kbd> + <kbd>T</kbd> | **Cycle Theme (Auto / Light / Dark)** |

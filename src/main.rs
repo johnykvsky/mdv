@@ -116,7 +116,7 @@ fn main() -> eframe::Result<()> {
     let mut viewport = egui::ViewportBuilder::default()
         .with_inner_size([1020.0, 720.0])
         .with_min_inner_size([500.0, 360.0])
-        .with_title("mdv")
+        .with_title(format!("mdv v{}", env!("CARGO_PKG_VERSION")))
         .with_app_id("mdv")
         .with_active(true)
         .with_visible(true);

@@ -457,11 +457,33 @@ impl Image {
             alt_src_spans,
         } = self;
 
-        let response = ui.add(
-            egui::Image::from_uri(&uri)
-                .fit_to_original_size(1.0)
-                .max_width(options.max_width(ui)),
-        );
+        let is_remote = uri.starts_with("http://")
+            || uri.starts_with("https://")
+            || uri.starts_with("//");
+
+        let (response, height) = if is_remote {
+            let resp = ui.hyperlink_to(&uri, &uri);
+            let h = resp.rect.height();
+            (resp, h)
+        } else {
+            let resp = ui.add(
+                egui::Image::from_uri(&uri)
+                    .fit_to_original_size(1.0)
+                    .max_width(options.max_width(ui)),
+            );
+            // egui's 24×24 placeholder means height ≥ 1.0 even while Pending, so
+            // query the load state directly rather than relying on height alone.
+            let is_pending = matches!(
+                ui.ctx().try_load_texture(
+                    &uri,
+                    egui::TextureOptions::default(),
+                    egui::load::SizeHint::default(),
+                ),
+                Ok(egui::load::TexturePoll::Pending { .. })
+            );
+            let h = if is_pending { 0.0 } else { resp.rect.height() };
+            (resp, h)
+        };
         // Save the rect now; `on_hover_ui_at_pointer` consumes `response`.
         let rect = response.rect;
 
@@ -472,18 +494,6 @@ impl Image {
                 }
             });
         }
-
-        // egui's 24×24 placeholder means height ≥ 1.0 even while Pending, so
-        // query the load state directly rather than relying on height alone.
-        let is_pending = matches!(
-            ui.ctx().try_load_texture(
-                &uri,
-                egui::TextureOptions::default(),
-                egui::load::SizeHint::default(),
-            ),
-            Ok(egui::load::TexturePoll::Pending { .. })
-        );
-        let height = if is_pending { 0.0 } else { rect.height() };
 
         // --- Search match highlighting (regex feature only) ---
         #[cfg(feature = "regex")]

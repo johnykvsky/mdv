@@ -858,6 +858,39 @@ impl MdvApp {
         }
     }
 
+    fn render_status_bar(&self, ui: &mut Ui) {
+        let status_message = if let Some(ref file) = self.current_file {
+            format!("Loaded {}", file.filename)
+        } else {
+            "Ready".to_string()
+        };
+
+        ui.horizontal(|ui| {
+            let label_resp = ui.label(&status_message);
+            if let Some(ref file) = self.current_file {
+                if let Some(ref path) = file.path {
+                    label_resp.on_hover_text(path.display().to_string());
+                }
+            }
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if let Some(ref file) = self.current_file {
+                    let size_str = format_file_size(file.content.len());
+                    ui.label(size_str);
+                    ui.separator();
+
+                    let pct = if self.max_scroll_offset <= 0.0 {
+                        100
+                    } else {
+                        (self.current_scroll_ratio * 100.0).round().clamp(0.0, 100.0) as u32
+                    };
+                    ui.label(format!("{pct}%"));
+                    ui.separator();
+                }
+            });
+        });
+    }
+
     fn render_toast(&mut self, ctx: &egui::Context) {
         if let Some((msg, created_at)) = &self.toast {
             let elapsed = created_at.elapsed();
@@ -877,7 +910,7 @@ impl MdvApp {
             let text_color = Color32::from_white_alpha((255.0 * alpha) as u8);
 
             egui::Area::new(Id::unique("toast_area"))
-                .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -28.0])
+                .anchor(egui::Align2::CENTER_BOTTOM, [0.0, -36.0])
                 .order(egui::Order::Tooltip)
                 .interactable(false)
                 .show(ctx, |ui| {
@@ -958,6 +991,17 @@ impl eframe::App for MdvApp {
                 .show(ui, |ui| {
                     self.render_toolbar(ui, &ctx);
                 });
+        }
+
+        // 3b. Bottom Status Bar (matches imge bottom_panel; reveals on hover near bottom edge in Zen mode)
+        let screen_height = ctx.viewport_rect().height();
+        let near_bottom = mouse_pos.map(|p| p.y >= screen_height - 28.0).unwrap_or(false);
+        let show_status_bar = !self.is_zen_mode || near_bottom;
+
+        if show_status_bar {
+            egui::Panel::bottom("bottom_panel").show(ui, |ui| {
+                self.render_status_bar(ui);
+            });
         }
 
         // 4. Main Document Viewport
@@ -1277,6 +1321,22 @@ fn icon_button(ui: &mut Ui, icon: &str, text: &str) -> egui::Response {
     ui.button(job)
 }
 
+pub fn format_file_size(bytes: usize) -> String {
+    const KB: f64 = 1024.0;
+    const MB: f64 = 1024.0 * 1024.0;
+    const GB: f64 = 1024.0 * 1024.0 * 1024.0;
+    let b = bytes as f64;
+    if b < KB {
+        format!("{} B", bytes)
+    } else if b < MB {
+        format!("{:.1} KB", b / KB)
+    } else if b < GB {
+        format!("{:.1} MB", b / MB)
+    } else {
+        format!("{:.2} GB", b / GB)
+    }
+}
+
 fn setup_custom_fonts(ctx: &egui::Context) {
     let mut fonts = egui::FontDefinitions::default();
 
@@ -1432,5 +1492,15 @@ mod tests {
         app.toggle_word_wrap();
         assert!(app.word_wrap);
         assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Word Wrap: ON"));
+    }
+
+    #[test]
+    fn test_format_file_size() {
+        assert_eq!(format_file_size(0), "0 B");
+        assert_eq!(format_file_size(512), "512 B");
+        assert_eq!(format_file_size(1024), "1.0 KB");
+        assert_eq!(format_file_size(1536), "1.5 KB");
+        assert_eq!(format_file_size(1048576), "1.0 MB");
+        assert_eq!(format_file_size(2621440), "2.5 MB");
     }
 }

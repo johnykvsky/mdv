@@ -250,7 +250,13 @@ impl MdvApp {
 
         // 1. In-document anchor link
         if trimmed.starts_with('#') {
-            self.set_toast(format!("Anchor: {}", trimmed));
+            if let Some(target) = trimmed.strip_prefix('#') {
+                let decoded = urlencoding::decode(target)
+                    .map(|c| c.into_owned())
+                    .unwrap_or_else(|_| target.to_string());
+                self.commonmark_cache.scroll_to_heading(&Id::NULL, Some(decoded));
+                ctx.request_repaint();
+            }
             return;
         }
 
@@ -269,6 +275,7 @@ impl MdvApp {
 
         // 3. Local filesystem links
         let without_file_scheme = trimmed.strip_prefix("file://").unwrap_or(trimmed);
+        let anchor_opt = without_file_scheme.find('#').map(|idx| &without_file_scheme[idx + 1..]);
         let clean_path = if let Some(idx) = without_file_scheme.find('#') {
             &without_file_scheme[..idx]
         } else {
@@ -332,6 +339,12 @@ impl MdvApp {
         if MD_EXTENSIONS.contains(&ext.as_str()) {
             self.push_history();
             if let Ok(()) = self.load_file(&canonical, ctx) {
+                if let Some(anchor) = anchor_opt {
+                    let decoded_anchor = urlencoding::decode(anchor)
+                        .map(|c| c.into_owned())
+                        .unwrap_or_else(|_| anchor.to_string());
+                    self.commonmark_cache.scroll_to_heading(&Id::NULL, Some(decoded_anchor));
+                }
                 if let Some(ref file) = self.current_file {
                     self.set_toast(format!("Opened {}", file.filename));
                 }
@@ -1075,7 +1088,8 @@ impl eframe::App for MdvApp {
 
                                     match self.view_mode {
                                         ViewMode::Preview => {
-                                            let mut viewer = CommonMarkViewer::new();
+                                            let mut viewer = CommonMarkViewer::new()
+                                                .enable_scroll_to_heading(true);
                                             viewer = match self.theme_mode {
                                                 ThemeMode::Light => viewer.syntax_theme_light("base16-ocean.light"),
                                                 _ => viewer.syntax_theme_dark("base16-ocean.dark"),
@@ -1502,5 +1516,67 @@ mod tests {
         assert_eq!(format_file_size(1536), "1.5 KB");
         assert_eq!(format_file_size(1048576), "1.0 MB");
         assert_eq!(format_file_size(2621440), "2.5 MB");
+    }
+
+    #[test]
+    fn test_handle_anchor_click() {
+        let (file_tx, file_rx) = channel();
+        let mut app = MdvApp {
+            current_file: None,
+            view_mode: ViewMode::Preview,
+            width_mode: WidthMode::Full,
+            font_mode: FontMode::Sans,
+            theme_mode: ThemeMode::Auto,
+            font_size: 16.0,
+            word_wrap: true,
+            is_zen_mode: false,
+            show_shortcuts_modal: false,
+            toast: None,
+            focus_frames: 0,
+            history: Vec::new(),
+            current_scroll_ratio: 0.0,
+            pending_scroll_ratio: None,
+            current_scroll_offset: 0.0,
+            max_scroll_offset: 0.0,
+            viewport_height: 600.0,
+            pending_scroll_offset: None,
+            watcher: None,
+            file_rx,
+            file_tx,
+            commonmark_cache: CommonMarkCache::default(),
+        };
+
+        let ctx = egui::Context::default();
+        app.handle_link_click("#1-czym-jest-rodzina-systemow-xflow", &ctx);
+        assert!(app.toast.is_none());
+    }
+
+    #[test]
+    fn test_anchor_scroll_navigation() {
+        let doc = r#"
+# Title
+
+[Go to section 2](#2-sekcja-druga)
+
+## 1. Sekcja pierwsza
+
+Tresc 1...
+
+## 2. Sekcja druga
+
+Tresc 2...
+"#;
+        let mut cache = CommonMarkCache::default();
+        cache.scroll_to_heading(&Id::NULL, Some("2-sekcja-druga".to_string()));
+
+        let ctx = egui::Context::default();
+        let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                CommonMarkViewer::new()
+                    .enable_scroll_to_heading(true)
+                    .show(ui, &mut cache, doc);
+            });
+        });
+        output.drop_without_applying_deltas();
     }
 }

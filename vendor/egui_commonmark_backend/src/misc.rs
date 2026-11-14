@@ -351,7 +351,10 @@ impl Link {
         } else if options.enable_scroll_to_heading
             && let Some(stripped) = destination.strip_prefix("#")
         {
-            let response = ui.link(layout_job);
+            let mut response = ui.link(layout_job);
+            response = response.on_hover_ui(|ui| {
+                ui.label(&destination);
+            });
             if response.clicked() {
                 scroll_to_heading.replace(stripped.to_string());
             }

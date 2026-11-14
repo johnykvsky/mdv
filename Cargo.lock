@@ -791,8 +791,6 @@ dependencies = [
 [[package]]
 name = "egui_commonmark"
 version = "0.26.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "00ca4b3dcc0ad039593452f7fbb46684246bf30d1920f8e7f06ee3b410ec1d9b"
 dependencies = [
  "egui",
  "egui_commonmark_backend",
@@ -1785,7 +1783,7 @@ checksum = "5d15f86d12da44cd8d4ec3c73984537eb7f4cadcb9776a575a0a8a05ca11005c"
 
 [[package]]
 name = "mdv"
-version = "0.2.6"
+version = "0.2.7"
 dependencies = [
  "eframe",
  "egui",

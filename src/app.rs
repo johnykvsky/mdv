@@ -50,6 +50,35 @@ pub struct HistoryEntry {
     pub scroll_ratio: f32,
 }
 
+#[derive(Default, Debug, Clone)]
+pub struct SearchState {
+    pub is_open: bool,
+    pub query: String,
+    pub active_index: usize,
+    pub total_matches: usize,
+    pub focus_requested: bool,
+    pub should_scroll_source: bool,
+    pub matches_source: Vec<std::ops::Range<usize>>,
+}
+
+impl SearchState {
+    pub fn reset(&mut self, cache: &mut CommonMarkCache) {
+        self.is_open = false;
+        self.query.clear();
+        self.active_index = 0;
+        self.total_matches = 0;
+        self.focus_requested = false;
+        self.should_scroll_source = false;
+        self.matches_source.clear();
+        let source_id = egui::Id::unique("mdv_markdown_view");
+        let sc = cache.search_cache_mut(&source_id);
+        sc.search_query.clear();
+        sc.search_ranges.clear();
+        sc.active_match = None;
+        sc.active_search_range = None;
+    }
+}
+
 pub struct MdvApp {
     pub current_file: Option<FileData>,
     pub view_mode: ViewMode,
@@ -62,6 +91,9 @@ pub struct MdvApp {
     pub show_shortcuts_modal: bool,
     pub toast: Option<(String, Instant)>,
     pub focus_frames: u8,
+
+    // Search
+    pub search_state: SearchState,
 
     // Navigation & history
     pub history: Vec<HistoryEntry>,
@@ -103,6 +135,7 @@ impl MdvApp {
             show_shortcuts_modal: false,
             toast: None,
             focus_frames: 20,
+            search_state: SearchState::default(),
             history: Vec::new(),
             current_scroll_ratio: 0.0,
             pending_scroll_ratio: None,
@@ -128,6 +161,7 @@ impl MdvApp {
     }
 
     pub fn load_file(&mut self, path: &Path, ctx: &egui::Context) -> Result<(), String> {
+        self.search_state.reset(&mut self.commonmark_cache);
         let canonical = path.canonicalize().unwrap_or_else(|_| path.to_path_buf());
         if !canonical.is_file() {
             self.current_file = Some(FileData {
@@ -361,6 +395,7 @@ impl MdvApp {
 
     pub fn toggle_view(&mut self) {
         self.pending_scroll_ratio = Some(self.current_scroll_ratio);
+        self.search_state.reset(&mut self.commonmark_cache);
         self.view_mode = match self.view_mode {
             ViewMode::Preview => ViewMode::Source,
             ViewMode::Source => ViewMode::Preview,
@@ -450,6 +485,7 @@ impl MdvApp {
     }
 
     pub fn handle_shortcuts(&mut self, ctx: &egui::Context) {
+        let wants_keyboard = ctx.egui_wants_keyboard_input();
         let mut do_escape = false;
         let mut scroll_arrow_delta = 0.0;
         let mut scroll_page_delta = 0.0;
@@ -466,6 +502,9 @@ impl MdvApp {
         let mut do_toggle_help = false;
         let mut font_delta = 0.0;
         let mut font_reset = false;
+        let mut do_toggle_search = false;
+        let mut do_search_next = false;
+        let mut do_search_prev = false;
 
         // 1. Collect inputs inside short ctx.input scope
         ctx.input(|i| {
@@ -473,8 +512,22 @@ impl MdvApp {
                 do_escape = true;
             }
 
+            // Ctrl+F: Open / focus search
+            if i.modifiers.ctrl && i.key_pressed(Key::F) {
+                do_toggle_search = true;
+            }
+
+            // F3 / Shift+F3: Next / Previous search match
+            if i.key_pressed(Key::F3) {
+                if i.modifiers.shift {
+                    do_search_prev = true;
+                } else {
+                    do_search_next = true;
+                }
+            }
+
             // Keyboard document scrolling: ArrowUp / ArrowDown, PageUp / PageDown, Home / End
-            if !self.show_shortcuts_modal {
+            if !self.show_shortcuts_modal && !wants_keyboard {
                 let up_presses = if !i.modifiers.ctrl && !i.modifiers.alt {
                     i.num_presses(Key::ArrowUp)
                 } else {
@@ -511,21 +564,21 @@ impl MdvApp {
                 }
             }
 
-            // Alt + Left or Backspace: Go back in history
+            // Alt + Left or Backspace: Go back in history (Backspace only when not typing)
             if (i.modifiers.alt && i.key_pressed(Key::ArrowLeft))
-                || i.key_pressed(Key::Backspace)
+                || (!wants_keyboard && i.key_pressed(Key::Backspace))
                 || i.pointer.button_pressed(PointerButton::Extra1)
             {
                 do_back = true;
             }
 
-            // Ctrl+E or Tab: Toggle preview/source
-            if (i.modifiers.ctrl && i.key_pressed(Key::E)) || i.key_pressed(Key::Tab) {
+            // Ctrl+E or Tab: Toggle preview/source (Tab only when not typing)
+            if (i.modifiers.ctrl && i.key_pressed(Key::E)) || (!wants_keyboard && i.key_pressed(Key::Tab)) {
                 do_toggle_view = true;
             }
 
-            // W: Toggle Width (without ctrl/alt)
-            if !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::W) {
+            // W: Toggle Width (without ctrl/alt, not while typing)
+            if !wants_keyboard && !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::W) {
                 do_toggle_width = true;
             }
 
@@ -534,8 +587,8 @@ impl MdvApp {
                 do_toggle_word_wrap = true;
             }
 
-            // F: Toggle Font (without ctrl/alt)
-            if !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::F) {
+            // F: Toggle Font (without ctrl/alt, not while typing)
+            if !wants_keyboard && !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::F) {
                 do_toggle_font = true;
             }
 
@@ -549,13 +602,13 @@ impl MdvApp {
                 do_cycle_theme = true;
             }
 
-            // F11 or Z: Zen mode
-            if i.key_pressed(Key::F11) || (!i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::Z)) {
+            // F11 or Z: Zen mode (Z only when not typing)
+            if i.key_pressed(Key::F11) || (!wants_keyboard && !i.modifiers.ctrl && !i.modifiers.alt && i.key_pressed(Key::Z)) {
                 do_toggle_zen = true;
             }
 
-            // ?: Shortcuts help
-            if i.key_pressed(Key::Questionmark) || (i.modifiers.shift && i.key_pressed(Key::Slash)) {
+            // ?: Shortcuts help (only when not typing)
+            if !wants_keyboard && (i.key_pressed(Key::Questionmark) || (i.modifiers.shift && i.key_pressed(Key::Slash))) {
                 do_toggle_help = true;
             }
 
@@ -571,7 +624,9 @@ impl MdvApp {
 
         // 2. Safely execute actions OUTSIDE ctx.input lock
         if do_escape {
-            if self.show_shortcuts_modal {
+            if self.search_state.is_open {
+                self.search_state.reset(&mut self.commonmark_cache);
+            } else if self.show_shortcuts_modal {
                 self.show_shortcuts_modal = false;
             } else if self.is_zen_mode {
                 self.toggle_zen_mode();
@@ -579,6 +634,32 @@ impl MdvApp {
                 std::process::exit(0);
             }
             return;
+        }
+
+        if do_toggle_search {
+            self.search_state.is_open = true;
+            self.search_state.focus_requested = true;
+            if !self.search_state.query.trim().is_empty() {
+                self.perform_search();
+            }
+        }
+
+        if do_search_next {
+            if self.search_state.is_open {
+                self.navigate_search_match(1);
+            } else {
+                self.search_state.is_open = true;
+                self.search_state.focus_requested = true;
+                if !self.search_state.query.trim().is_empty() {
+                    self.perform_search();
+                }
+            }
+        }
+
+        if do_search_prev {
+            if self.search_state.is_open {
+                self.navigate_search_match(-1);
+            }
         }
 
         if scroll_arrow_delta != 0.0 {
@@ -628,6 +709,161 @@ impl MdvApp {
         } else if font_reset {
             self.font_size = 16.0;
             self.set_toast("Font Size: 16px (Reset)");
+        }
+    }
+
+    pub fn perform_search(&mut self) {
+        let source_id = egui::Id::unique("mdv_markdown_view");
+        if self.search_state.query.trim().is_empty() {
+            self.search_state.total_matches = 0;
+            self.search_state.active_index = 0;
+            self.search_state.matches_source.clear();
+            let sc = self.commonmark_cache.search_cache_mut(&source_id);
+            sc.search_query.clear();
+            sc.search_ranges.clear();
+            sc.active_match = None;
+            sc.active_search_range = None;
+            return;
+        }
+
+        if let Some(ref file) = self.current_file {
+            match self.view_mode {
+                ViewMode::Preview => {
+                    let sc = self.commonmark_cache.search_cache_mut(&source_id);
+                    sc.search_query.clone_from(&self.search_state.query);
+                    self.commonmark_cache.update_search_matches(&source_id, &file.content);
+                    let ranges = self.commonmark_cache.search_ranges(&source_id);
+                    self.search_state.total_matches = ranges.len();
+                    self.search_state.active_index = self
+                        .commonmark_cache
+                        .active_match(&source_id)
+                        .map(|idx| idx + 1)
+                        .unwrap_or(if ranges.is_empty() { 0 } else { 1 });
+                }
+                ViewMode::Source => {
+                    self.search_state.matches_source =
+                        find_case_insensitive_matches(&file.content, &self.search_state.query);
+                    self.search_state.total_matches = self.search_state.matches_source.len();
+                    if self.search_state.total_matches > 0 {
+                        self.search_state.active_index = 1;
+                        self.search_state.should_scroll_source = true;
+                    } else {
+                        self.search_state.active_index = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn navigate_search_match(&mut self, delta: isize) {
+        if self.search_state.total_matches == 0 {
+            return;
+        }
+        match self.view_mode {
+            ViewMode::Preview => {
+                let source_id = egui::Id::unique("mdv_markdown_view");
+                self.commonmark_cache.go_to_match(&source_id, delta);
+                self.search_state.active_index = self
+                    .commonmark_cache
+                    .active_match(&source_id)
+                    .map(|idx| idx + 1)
+                    .unwrap_or(0);
+            }
+            ViewMode::Source => {
+                let len = self.search_state.total_matches as isize;
+                let current_0 = (self.search_state.active_index.saturating_sub(1)) as isize;
+                let next_0 = (current_0 + delta).rem_euclid(len) as usize;
+                self.search_state.active_index = next_0 + 1;
+                self.search_state.should_scroll_source = true;
+            }
+        }
+    }
+
+    fn render_search_bar(&mut self, ui: &mut Ui, _ctx: &egui::Context) {
+        let mut do_nav_next = false;
+        let mut do_nav_prev = false;
+        let mut do_close = false;
+
+        ui.horizontal(|ui| {
+            ui.add_space(4.0);
+            ui.label(
+                RichText::new(icons::MAGNIFYING_GLASS)
+                    .font(FontId::new(15.0, egui::FontFamily::Name("Phosphor".into()))),
+            );
+
+            let text_edit = egui::TextEdit::singleline(&mut self.search_state.query)
+                .hint_text("Find in document... (Enter/F3: next, Shift+Enter/Shift+F3: prev)")
+                .desired_width(280.0)
+                .id_salt("search_query_input");
+
+            let response = ui.add(text_edit);
+
+            if self.search_state.focus_requested {
+                response.request_focus();
+                self.search_state.focus_requested = false;
+            }
+
+            if response.changed() {
+                self.perform_search();
+            }
+
+            if response.has_focus() {
+                if ui.input(|i| i.key_pressed(Key::Enter)) {
+                    if ui.input(|i| i.modifiers.shift) {
+                        do_nav_prev = true;
+                    } else {
+                        do_nav_next = true;
+                    }
+                }
+            }
+
+            // Match count indicator
+            if !self.search_state.query.trim().is_empty() {
+                let (count_text, color) = if self.search_state.total_matches == 0 {
+                    ("0/0 (No matches)".to_string(), ui.visuals().error_fg_color)
+                } else {
+                    (
+                        format!("{}/{}", self.search_state.active_index, self.search_state.total_matches),
+                        ui.visuals().text_color(),
+                    )
+                };
+                ui.label(RichText::new(count_text).color(color).monospace().size(13.0));
+            }
+
+            ui.add_space(6.0);
+
+            // Previous button (▲)
+            let prev_btn = ui.add_enabled(
+                self.search_state.total_matches > 0,
+                egui::Button::new("▲").min_size(Vec2::new(24.0, 20.0)),
+            ).on_hover_text("Previous match (Shift+Enter / Shift+F3)");
+            if prev_btn.clicked() {
+                do_nav_prev = true;
+            }
+
+            // Next button (▼)
+            let next_btn = ui.add_enabled(
+                self.search_state.total_matches > 0,
+                egui::Button::new("▼").min_size(Vec2::new(24.0, 20.0)),
+            ).on_hover_text("Next match (Enter / F3)");
+            if next_btn.clicked() {
+                do_nav_next = true;
+            }
+
+            // Close button (✕)
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("✕").on_hover_text("Close search (Esc)").clicked() {
+                    do_close = true;
+                }
+            });
+        });
+
+        if do_close {
+            self.search_state.reset(&mut self.commonmark_cache);
+        } else if do_nav_next {
+            self.navigate_search_match(1);
+        } else if do_nav_prev {
+            self.navigate_search_match(-1);
         }
     }
 
@@ -766,6 +1002,25 @@ impl MdvApp {
                         }
                     });
                 });
+
+                ui.separator();
+
+                // Search Toggle
+                if ui
+                    .selectable_label(self.search_state.is_open, "Search")
+                    .on_hover_text("Find in document (Ctrl+F)")
+                    .clicked()
+                {
+                    self.search_state.is_open = !self.search_state.is_open;
+                    if self.search_state.is_open {
+                        self.search_state.focus_requested = true;
+                        if !self.search_state.query.trim().is_empty() {
+                            self.perform_search();
+                        }
+                    } else {
+                        self.search_state.reset(&mut self.commonmark_cache);
+                    }
+                }
             });
         });
     }
@@ -801,6 +1056,14 @@ impl MdvApp {
 
                         ui.label(RichText::new("Alt + Z").strong().monospace());
                         ui.label("Toggle Word Wrap (Source View)");
+                        ui.end_row();
+
+                        ui.label(RichText::new("Ctrl + F").strong().monospace());
+                        ui.label("Find in Document (Preview / Source)");
+                        ui.end_row();
+
+                        ui.label(RichText::new("F3 / Shift + F3").strong().monospace());
+                        ui.label("Next / Previous Search Match");
                         ui.end_row();
 
                         ui.label(RichText::new("W").strong().monospace());
@@ -884,6 +1147,16 @@ impl MdvApp {
                 if let Some(ref path) = file.path {
                     label_resp.on_hover_text(path.display().to_string());
                 }
+            }
+
+            if self.search_state.is_open && !self.search_state.query.trim().is_empty() {
+                ui.separator();
+                let match_info = if self.search_state.total_matches == 0 {
+                    "0/0".to_string()
+                } else {
+                    format!("{}/{}", self.search_state.active_index, self.search_state.total_matches)
+                };
+                ui.label(RichText::new(format!("Found: {}", match_info)).strong().monospace());
             }
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -1006,6 +1279,22 @@ impl eframe::App for MdvApp {
                 });
         }
 
+        if self.search_state.is_open {
+            let search_bar_bg = ui.visuals().window_fill();
+            let search_bar_stroke = ui.visuals().widgets.noninteractive.bg_stroke.color;
+
+            egui::Panel::top("search_bar_panel")
+                .frame(
+                    egui::Frame::new()
+                        .fill(search_bar_bg)
+                        .inner_margin(Margin::symmetric(14, 6))
+                        .stroke(Stroke::new(1.0, search_bar_stroke)),
+                )
+                .show(ui, |ui| {
+                    self.render_search_bar(ui, &ctx);
+                });
+        }
+
         // 3b. Bottom Status Bar (matches imge bottom_panel; reveals on hover near bottom edge in Zen mode)
         let screen_height = ctx.viewport_rect().height();
         let near_bottom = mouse_pos.map(|p| p.y >= screen_height - 28.0).unwrap_or(false);
@@ -1094,7 +1383,8 @@ impl eframe::App for MdvApp {
                                                 ThemeMode::Light => viewer.syntax_theme_light("base16-ocean.light"),
                                                 _ => viewer.syntax_theme_dark("base16-ocean.dark"),
                                             };
-                                            viewer.show(ui, &mut self.commonmark_cache, &file.content);
+                                            let source_id = egui::Id::unique("mdv_markdown_view");
+                                            viewer.show_with_id(source_id, ui, &mut self.commonmark_cache, &file.content);
                                         }
                                         ViewMode::Source => {
                                             let font_id = FontId::new(base * 0.92, egui::FontFamily::Monospace);
@@ -1115,6 +1405,27 @@ impl eframe::App for MdvApp {
                                             let start_pos = ui.cursor().min;
                                             let word_wrap = self.word_wrap;
 
+                                            let has_search = self.search_state.is_open && !self.search_state.matches_source.is_empty();
+                                            let active_idx = self.search_state.active_index;
+                                            let matches_source = if has_search {
+                                                self.search_state.matches_source.clone()
+                                            } else {
+                                                Vec::new()
+                                            };
+
+                                            let match_bg = egui::Color32::from_rgba_unmultiplied(
+                                                ui.visuals().warn_fg_color.r(),
+                                                ui.visuals().warn_fg_color.g(),
+                                                ui.visuals().warn_fg_color.b(),
+                                                90,
+                                            );
+                                            let active_match_bg = egui::Color32::from_rgba_unmultiplied(
+                                                ui.visuals().error_fg_color.r(),
+                                                ui.visuals().error_fg_color.g(),
+                                                ui.visuals().error_fg_color.b(),
+                                                150,
+                                            );
+
                                             ui.horizontal_top(|ui| {
                                                 ui.add_space(gutter_width);
 
@@ -1122,13 +1433,57 @@ impl eframe::App for MdvApp {
                                                 let layouter_font_id = font_id.clone();
                                                 let mut layouter = move |ui: &Ui, buf: &dyn egui::TextBuffer, wrap_width: f32| {
                                                     let max_w = if word_wrap { wrap_width } else { f32::INFINITY };
-                                                    let mut layout_job = egui::text::LayoutJob::simple(
-                                                        buf.as_str().to_string(),
-                                                        layouter_font_id.clone(),
-                                                        ui.visuals().text_color(),
-                                                        max_w,
-                                                    );
+                                                    let text = buf.as_str();
+                                                    let text_color = ui.visuals().text_color();
+
+                                                    let mut layout_job = egui::text::LayoutJob::default();
+                                                    layout_job.wrap.max_width = max_w;
                                                     layout_job.keep_trailing_whitespace = true;
+
+                                                    if matches_source.is_empty() {
+                                                        layout_job.append(
+                                                            text,
+                                                            0.0,
+                                                            egui::TextFormat::simple(layouter_font_id.clone(), text_color),
+                                                        );
+                                                    } else {
+                                                        let mut cursor = 0;
+                                                        for (i, r) in matches_source.iter().enumerate() {
+                                                            let start = r.start.min(text.len());
+                                                            let end = r.end.min(text.len());
+                                                            if start < cursor {
+                                                                continue;
+                                                            }
+                                                            if start > cursor {
+                                                                layout_job.append(
+                                                                    &text[cursor..start],
+                                                                    0.0,
+                                                                    egui::TextFormat::simple(layouter_font_id.clone(), text_color),
+                                                                );
+                                                            }
+                                                            let is_active = (i + 1) == active_idx;
+                                                            let bg = if is_active { active_match_bg } else { match_bg };
+                                                            layout_job.append(
+                                                                &text[start..end],
+                                                                0.0,
+                                                                egui::TextFormat {
+                                                                    font_id: layouter_font_id.clone(),
+                                                                    color: text_color,
+                                                                    background: bg,
+                                                                    ..Default::default()
+                                                                },
+                                                            );
+                                                            cursor = end;
+                                                        }
+                                                        if cursor < text.len() {
+                                                            layout_job.append(
+                                                                &text[cursor..text.len()],
+                                                                0.0,
+                                                                egui::TextFormat::simple(layouter_font_id.clone(), text_color),
+                                                            );
+                                                        }
+                                                    }
+
                                                     ui.fonts_mut(|f| f.layout_job(layout_job))
                                                 };
 
@@ -1161,6 +1516,21 @@ impl eframe::App for MdvApp {
                                                         })
                                                         .inner
                                                 };
+
+                                                if self.search_state.should_scroll_source {
+                                                    if self.search_state.active_index > 0
+                                                        && self.search_state.active_index <= self.search_state.matches_source.len()
+                                                    {
+                                                        let active_range = &self.search_state.matches_source[self.search_state.active_index - 1];
+                                                        let char_count = file.content
+                                                            .get(..active_range.start.min(file.content.len()))
+                                                            .map_or_else(|| file.content.chars().count(), |s| s.chars().count());
+                                                        let local_rect = output.galley.pos_from_cursor(egui::text::CCursor::new(char_count));
+                                                        let world_rect = local_rect.translate(output.galley_pos.to_vec2());
+                                                        ui.scroll_to_rect(world_rect, Some(egui::Align::Center));
+                                                    }
+                                                    self.search_state.should_scroll_source = false;
+                                                }
 
                                                 // Paint non-selectable line numbers aligned with each logical line
                                                 let painter = ui.painter();
@@ -1288,6 +1658,40 @@ impl eframe::App for MdvApp {
         self.render_shortcuts_modal(&ctx);
         self.render_toast(&ctx);
     }
+}
+
+pub fn find_case_insensitive_matches(haystack: &str, needle: &str) -> Vec<std::ops::Range<usize>> {
+    if needle.is_empty() || haystack.is_empty() {
+        return Vec::new();
+    }
+    let needle_lower = needle.to_lowercase();
+    let needle_chars: Vec<char> = needle_lower.chars().collect();
+    let haystack_chars: Vec<(usize, char)> = haystack.char_indices().collect();
+    let mut matches = Vec::new();
+
+    if haystack_chars.len() < needle_chars.len() {
+        return matches;
+    }
+
+    let mut i = 0;
+    while i <= haystack_chars.len() - needle_chars.len() {
+        let is_match = needle_chars.iter().enumerate().all(|(idx, &nc)| {
+            haystack_chars[i + idx].1.to_lowercase().any(|c| c == nc)
+        });
+        if is_match {
+            let start = haystack_chars[i].0;
+            let end = if i + needle_chars.len() < haystack_chars.len() {
+                haystack_chars[i + needle_chars.len()].0
+            } else {
+                haystack.len()
+            };
+            matches.push(start..end);
+            i += needle_chars.len();
+        } else {
+            i += 1;
+        }
+    }
+    matches
 }
 
 fn resolve_path(arg: &str) -> PathBuf {
@@ -1438,6 +1842,7 @@ mod tests {
             show_shortcuts_modal: false,
             toast: None,
             focus_frames: 0,
+            search_state: SearchState::default(),
             history: Vec::new(),
             current_scroll_ratio: 0.5,
             pending_scroll_ratio: None,
@@ -1486,6 +1891,7 @@ mod tests {
             show_shortcuts_modal: false,
             toast: None,
             focus_frames: 0,
+            search_state: SearchState::default(),
             history: Vec::new(),
             current_scroll_ratio: 0.0,
             pending_scroll_ratio: None,
@@ -1533,6 +1939,7 @@ mod tests {
             show_shortcuts_modal: false,
             toast: None,
             focus_frames: 0,
+            search_state: SearchState::default(),
             history: Vec::new(),
             current_scroll_ratio: 0.0,
             pending_scroll_ratio: None,
@@ -1578,5 +1985,95 @@ Tresc 2...
             });
         });
         output.drop_without_applying_deltas();
+    }
+
+    #[test]
+    fn test_find_case_insensitive_matches() {
+        let text = "Rust is fast. Pure RUST reader. You should learn rust today.";
+        let matches = find_case_insensitive_matches(text, "rust");
+        assert_eq!(matches.len(), 3);
+        assert_eq!(&text[matches[0].clone()], "Rust");
+        assert_eq!(&text[matches[1].clone()], "RUST");
+        assert_eq!(&text[matches[2].clone()], "rust");
+
+        // Unicode / Polish letters
+        let pl_text = "Żółw i ŻÓŁW idą drogą.";
+        let pl_matches = find_case_insensitive_matches(pl_text, "żółw");
+        assert_eq!(pl_matches.len(), 2);
+        assert_eq!(&pl_text[pl_matches[0].clone()], "Żółw");
+        assert_eq!(&pl_text[pl_matches[1].clone()], "ŻÓŁW");
+
+        // Non-overlapping check
+        let repeated = "aaaa";
+        let rep_matches = find_case_insensitive_matches(repeated, "aa");
+        assert_eq!(rep_matches.len(), 2);
+        assert_eq!(rep_matches[0], 0..2);
+        assert_eq!(rep_matches[1], 2..4);
+
+        // Empty cases
+        assert!(find_case_insensitive_matches(text, "").is_empty());
+        assert!(find_case_insensitive_matches("", "rust").is_empty());
+    }
+
+    #[test]
+    fn test_search_reset_on_view_toggle() {
+        let (file_tx, file_rx) = channel();
+        let mut app = MdvApp {
+            current_file: Some(FileData {
+                path: None,
+                filename: "doc.md".to_string(),
+                content: "Sample text with search target".to_string(),
+            }),
+            view_mode: ViewMode::Preview,
+            width_mode: WidthMode::Full,
+            font_mode: FontMode::Sans,
+            theme_mode: ThemeMode::Auto,
+            font_size: 16.0,
+            word_wrap: true,
+            is_zen_mode: false,
+            show_shortcuts_modal: false,
+            toast: None,
+            focus_frames: 0,
+            search_state: SearchState::default(),
+            history: Vec::new(),
+            current_scroll_ratio: 0.0,
+            pending_scroll_ratio: None,
+            current_scroll_offset: 0.0,
+            max_scroll_offset: 100.0,
+            viewport_height: 600.0,
+            pending_scroll_offset: None,
+            watcher: None,
+            file_rx,
+            file_tx,
+            commonmark_cache: CommonMarkCache::default(),
+        };
+
+        app.search_state.is_open = true;
+        app.search_state.query = "target".to_string();
+        app.perform_search();
+        assert_eq!(app.search_state.total_matches, 1);
+        assert_eq!(app.search_state.active_index, 1);
+
+        // Toggle to Source mode -> search must reset automatically
+        app.toggle_view();
+        assert_eq!(app.view_mode, ViewMode::Source);
+        assert!(!app.search_state.is_open);
+        assert_eq!(app.search_state.query, "");
+        assert_eq!(app.search_state.total_matches, 0);
+        assert_eq!(app.search_state.active_index, 0);
+
+        // Search in Source mode
+        app.search_state.is_open = true;
+        app.search_state.query = "sample".to_string();
+        app.perform_search();
+        assert_eq!(app.search_state.total_matches, 1);
+        assert_eq!(app.search_state.active_index, 1);
+
+        // Toggle back to Preview mode -> search resets automatically again
+        app.toggle_view();
+        assert_eq!(app.view_mode, ViewMode::Preview);
+        assert!(!app.search_state.is_open);
+        assert_eq!(app.search_state.query, "");
+        assert_eq!(app.search_state.total_matches, 0);
     }
 }

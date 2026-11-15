@@ -13,3 +13,4 @@ pub const ARROWS_IN_LINE_HORIZONTAL: &str = "\u{E530}";
 pub const TEXT_AA: &str = "\u{E6EE}";
 pub const COPY: &str = "\u{E1CA}";
 pub const CHECK: &str = "\u{E182}";
+pub const MAGNIFYING_GLASS: &str = "\u{E30C}";

@@ -30,6 +30,8 @@
 | :--- | :--- |
 | <kbd>Ctrl</kbd> + <kbd>E</kbd> or <kbd>Tab</kbd> | **Toggle View (Preview / Markdown Source)** |
 | <kbd>Ctrl</kbd> + <kbd>C</kbd> | **Copy Selected Text (Source / Code View)** |
+| <kbd>Ctrl</kbd> + <kbd>F</kbd> | **Find in Document (Preview / Source)** |
+| <kbd>F3</kbd> / <kbd>Shift</kbd> + <kbd>F3</kbd> | **Next / Previous Search Match** |
 | <kbd>Alt</kbd> + <kbd>Z</kbd> | **Toggle Word Wrap (Source / Code View)** |
 | <kbd>W</kbd> | **Toggle Width (Full Window / Centered Column)** |
 | <kbd>F</kbd> | **Toggle Font (Source Sans 3 / JetBrains Mono NL)** |

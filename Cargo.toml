@@ -1,6 +1,6 @@
 [package]
 name = "mdv"
-version = "0.2.9"
+version = "0.2.10"
 description = "Native Linux distraction-free Markdown Focus Viewer"
 authors = ["jcx"]
 edition = "2024"

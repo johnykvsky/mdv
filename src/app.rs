@@ -149,6 +149,8 @@ impl MdvApp {
             commonmark_cache: CommonMarkCache::default(),
         };
 
+        app.apply_theme(&cc.egui_ctx);
+
         if let Some(path) = initial_file {
             let _ = app.load_file(&path, &cc.egui_ctx);
         }
@@ -458,21 +460,35 @@ impl MdvApp {
     pub fn apply_theme(&self, ctx: &egui::Context) {
         match self.theme_mode {
             ThemeMode::Auto => {
-                ctx.set_visuals(egui::Visuals::default());
+                let is_light = ctx.system_theme() == Some(egui::Theme::Light);
+                if is_light {
+                    ctx.set_visuals(Self::light_visuals());
+                } else {
+                    ctx.set_visuals(Self::dark_visuals());
+                }
             }
             ThemeMode::Light => {
-                let mut visuals = egui::Visuals::light();
-                visuals.panel_fill = Color32::from_rgb(252, 252, 253);
-                visuals.window_fill = Color32::from_rgb(255, 255, 255);
-                ctx.set_visuals(visuals);
+                ctx.set_visuals(Self::light_visuals());
             }
             ThemeMode::Dark => {
-                let mut visuals = egui::Visuals::dark();
-                visuals.panel_fill = Color32::from_rgb(22, 22, 26);
-                visuals.window_fill = Color32::from_rgb(26, 26, 32);
-                ctx.set_visuals(visuals);
+                ctx.set_visuals(Self::dark_visuals());
             }
         }
+    }
+
+    fn dark_visuals() -> egui::Visuals {
+        let mut visuals = egui::Visuals::dark();
+        visuals.panel_fill = Color32::from_rgb(22, 22, 26);
+        visuals.window_fill = Color32::from_rgb(26, 26, 32);
+        visuals.code_bg_color = Color32::from_rgb(36, 38, 46);
+        visuals
+    }
+
+    fn light_visuals() -> egui::Visuals {
+        let mut visuals = egui::Visuals::light();
+        visuals.panel_fill = Color32::from_rgb(252, 252, 253);
+        visuals.window_fill = Color32::from_rgb(255, 255, 255);
+        visuals
     }
 
     pub fn toggle_zen_mode(&mut self) {
@@ -2175,5 +2191,15 @@ Tresc 2...
         // 6. Press Back on empty history -> should return false and notify
         assert!(!app.go_back(&ctx));
         assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("No previous document in history"));
+    }
+
+    #[test]
+    fn test_dark_visuals_code_bg_contrast() {
+        let dark = MdvApp::dark_visuals();
+        assert_eq!(dark.code_bg_color, Color32::from_rgb(36, 38, 46));
+        assert!(dark.dark_mode);
+
+        let light = MdvApp::light_visuals();
+        assert!(!light.dark_mode);
     }
 }

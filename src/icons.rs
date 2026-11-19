@@ -1,6 +1,7 @@
 //! Embedded vector icons from Phosphor Icons (Regular weight)
 #![allow(dead_code)]
 
+pub const ARROW_LEFT: &str = "\u{E06C}";
 pub const FOLDER_OPEN: &str = "\u{E256}";
 pub const CIRCLE_HALF: &str = "\u{E18C}";
 pub const SUN: &str = "\u{E472}";

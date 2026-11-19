@@ -871,7 +871,23 @@ impl MdvApp {
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing = Vec2::new(8.0, 0.0);
 
-            // Left Section: Open file & document info
+            // Left Section: Back button & Open file
+            let has_history = !self.history.is_empty();
+            let back_tooltip = if let Some(prev) = self.history.last() {
+                format!("Back to {} (Backspace or Alt+←)", prev.filename)
+            } else {
+                "Back in document history (Backspace or Alt+←)".to_string()
+            };
+
+            ui.add_enabled_ui(has_history, |ui| {
+                if icon_button(ui, icons::ARROW_LEFT, "Back")
+                    .on_hover_text(back_tooltip)
+                    .clicked()
+                {
+                    self.go_back(ctx);
+                }
+            });
+
             if icon_button(ui, icons::FOLDER_OPEN, "Open")
                 .on_hover_text("Open Markdown File (Ctrl+O)")
                 .clicked()
@@ -1709,7 +1725,11 @@ fn resolve_path(arg: &str) -> PathBuf {
 
 fn icon_button(ui: &mut Ui, icon: &str, text: &str) -> egui::Response {
     let mut job = egui::text::LayoutJob::default();
-    let text_color = ui.visuals().text_color();
+    let text_color = if ui.is_enabled() {
+        ui.visuals().text_color()
+    } else {
+        ui.visuals().weak_text_color()
+    };
     let button_font_id = egui::TextStyle::Button.resolve(ui.style());
 
     // Phosphor icon glyph
@@ -2075,5 +2095,85 @@ Tresc 2...
         assert!(!app.search_state.is_open);
         assert_eq!(app.search_state.query, "");
         assert_eq!(app.search_state.total_matches, 0);
+    }
+
+    #[test]
+    fn test_history_navigation_stack() {
+        let (file_tx, file_rx) = channel();
+        let mut app = MdvApp {
+            current_file: Some(FileData {
+                path: None,
+                filename: "docA.md".to_string(),
+                content: "# Doc A".to_string(),
+            }),
+            view_mode: ViewMode::Preview,
+            width_mode: WidthMode::Full,
+            font_mode: FontMode::Sans,
+            theme_mode: ThemeMode::Auto,
+            font_size: 16.0,
+            word_wrap: true,
+            is_zen_mode: false,
+            show_shortcuts_modal: false,
+            toast: None,
+            focus_frames: 0,
+            search_state: SearchState::default(),
+            history: Vec::new(),
+            current_scroll_ratio: 0.25,
+            pending_scroll_ratio: None,
+            current_scroll_offset: 25.0,
+            max_scroll_offset: 100.0,
+            viewport_height: 600.0,
+            pending_scroll_offset: None,
+            watcher: None,
+            file_rx,
+            file_tx,
+            commonmark_cache: CommonMarkCache::default(),
+        };
+
+        let ctx = egui::Context::default();
+
+        // 1. Initially on Doc A, history is empty
+        assert!(app.history.is_empty());
+
+        // 2. Navigate to Doc B
+        app.push_history();
+        app.current_file = Some(FileData {
+            path: None,
+            filename: "docB.md".to_string(),
+            content: "# Doc B".to_string(),
+        });
+        app.current_scroll_ratio = 0.5;
+        assert_eq!(app.history.len(), 1);
+        assert_eq!(app.history[0].filename, "docA.md");
+        assert_eq!(app.history[0].scroll_ratio, 0.25);
+
+        // 3. Navigate to Doc C
+        app.push_history();
+        app.current_file = Some(FileData {
+            path: None,
+            filename: "docC.md".to_string(),
+            content: "# Doc C".to_string(),
+        });
+        app.current_scroll_ratio = 0.75;
+        assert_eq!(app.history.len(), 2);
+        assert_eq!(app.history[1].filename, "docB.md");
+
+        // 4. Press Back -> should return to Doc B and restore scroll ratio 0.5
+        assert!(app.go_back(&ctx));
+        assert_eq!(app.current_file.as_ref().map(|f| f.filename.as_str()), Some("docB.md"));
+        assert_eq!(app.pending_scroll_ratio, Some(0.5));
+        assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Returned to docB.md"));
+        assert_eq!(app.history.len(), 1);
+
+        // 5. Press Back again -> should return to Doc A and restore scroll ratio 0.25
+        assert!(app.go_back(&ctx));
+        assert_eq!(app.current_file.as_ref().map(|f| f.filename.as_str()), Some("docA.md"));
+        assert_eq!(app.pending_scroll_ratio, Some(0.25));
+        assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("Returned to docA.md"));
+        assert!(app.history.is_empty());
+
+        // 6. Press Back on empty history -> should return false and notify
+        assert!(!app.go_back(&ctx));
+        assert_eq!(app.toast.as_ref().map(|t| t.0.as_str()), Some("No previous document in history"));
     }
 }
